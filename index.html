@@ -730,7 +730,9 @@ const getApiKey=()=>(state.cfg.geminiKey||localStorage.getItem("gemini_api_key")
 /* Utilitários */
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const NP=()=>state.cfg.nomes.power||"Ewerton", NA=()=>state.cfg.nomes.pace||"Joanna";
-const nm=t=>String(t??"").replace(/\{power\}/g,NP()).replace(/\{pace\}/g,NA());
+/* artigos no feminino antes de {pace} (ao→à, o→a, do→da, no→na, pelo→pela), inclusive nos textos que vêm do Gemini */
+const artPace=t=>t.replace(/(^|[^\p{L}])([Aa])o \{pace\}/gu,(m,p,a)=>p+(a==="A"?"À":"à")+" {pace}").replace(/(^|[^\p{L}])(pel|[dDnN])?([oO]) \{pace\}/gu,(m,p,pre,o)=>p+(pre||"")+(o==="O"?"A":"a")+" {pace}");
+const nm=t=>artPace(String(t??"")).replace(/\{power\}/g,NP()).replace(/\{pace\}/g,NA());
 function dt(i){const d=new Date(state.week.id+"T12:00:00");d.setDate(d.getDate()+i);return d}
 const fmt=d=>d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
 function todayIdx(){const t=new Date().toDateString();for(let i=0;i<6;i++) if(dt(i).toDateString()===t) return i;return -1}
@@ -870,7 +872,7 @@ function vPainel(v){
  const rkPa=D.map((_,i)=>sum(acts("pace",i).filter(a=>a.run).map(a=>a.km)));
  const all=["pace","power"].flatMap(w=>D.flatMap((_,i)=>acts(w,i).map(a=>({...a,w,i}))));
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Painel</h2><p class="lead">Volume e intensidade planejados, resultados importados e o que já foi marcado nos checklists.</p></div>
-  <div class="btns"><button class="btn sm" data-act="imp-res" data-who="pace">Importar resultados do ${esc(NA())}</button><button class="btn sm ghost" data-act="imp-res" data-who="power">Importar do ${esc(NP())}</button></div></div>
+  <div class="btns"><button class="btn sm" data-act="imp-res" data-who="pace">Importar resultados da ${esc(NA())}</button><button class="btn sm ghost" data-act="imp-res" data-who="power">Importar do ${esc(NP())}</button></div></div>
  <div class="upl" id="upl-res"></div>
  <div class="grid">
   <div class="panel wide"><h3>Resultados da semana</h3><p class="sub">Atividades importadas do Garmin ou de outro app (CSV, PDF, foto ou print). Cada uma é ligada ao dia certo pela data.</p>
@@ -881,8 +883,8 @@ function vPainel(v){
   <div class="panel"><h3>Adesão e volume</h3><p class="sub">Marcações feitas na aba Dia e média diária planejada.</p>
    <div class="row"><span>Média diária (${esc(NP())} / ${esc(NA())})</span><b>${avgPo} min / ${avgPa} min</b></div>
    <div class="row"><span>Treinos do ${esc(NP())}</span><b>${cnt("power","treino")} de 6</b></div>
-   <div class="row"><span>Corridas do ${esc(NA())}</span><b>${runsDone} de ${runs}</b></div>
-   <div class="row"><span>Musculação ou funcional do ${esc(NA())}</span><b>${cnt("pace","treino")} de 6</b></div>
+   <div class="row"><span>Corridas da ${esc(NA())}</span><b>${runsDone} de ${runs}</b></div>
+   <div class="row"><span>Musculação ou funcional da ${esc(NA())}</span><b>${cnt("pace","treino")} de 6</b></div>
    <div class="row"><span>Água (${esc(NP())} / ${esc(NA())})</span><b>${cnt("power","agua")} / ${cnt("pace","agua")} dias</b></div>
    <div class="row"><span>Sono de 7h ou mais</span><b>${cnt("power","sono")} / ${cnt("pace","sono")} dias</b></div>
    <div class="row"><span>Refeições ${esc(NP())}</span><b>${mealsPo} de ${mtPo} (${Math.round(mealsPo/mtPo*100)}%)</b></div>
@@ -1403,7 +1405,7 @@ async function importDieta(file){
   if(!r||!Array.isArray(r.refeicoes)||!r.refeicoes.length)throw {code:"vazio"};
   r.refeicoes.forEach((m,i)=>{m.k=strip_(m.k||m.n||"r"+i).replace(/[^a-z0-9]/g,"")||"r"+i;m.p=m.p||[];m.s=m.s||[]});
   r.who=who;state.dietDraft=r;say(id,"");
-  document.getElementById("prev-dieta").innerHTML=`<div class="panel" style="margin-bottom:18px"><h3>Nova dieta do ${esc(who==="power"?NP():NA())}${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
+  document.getElementById("prev-dieta").innerHTML=`<div class="panel" style="margin-bottom:18px"><h3>Nova dieta ${esc(doDa(who))}${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
    ${r.refeicoes.map(m=>`<div class="row"><span><b>${esc(m.h||"")}</b> ${esc(m.n)}</span><span>${m.p.length} itens, ${m.s.length} substituições</span></div>`).join("")}
    <div class="actions"><button class="btn" data-act="usar-dieta">Usar esta dieta</button><button class="btn ghost" data-act="desc-dieta">Descartar</button></div></div>`;
  }catch(e){say(id,ERR(e))}
