@@ -3,6 +3,23 @@
 module.exports = async (req, res) => {
   const KEY = process.env.GEMINI_API_KEY;
 
+  const q = req.query || {};
+
+  // GET /api/gemini?modelos=1 lista os modelos que esta chave pode usar (só os nomes, nunca a chave)
+  if (req.method === "GET" && q.modelos && KEY) {
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { headers: { "x-goog-api-key": KEY } });
+      const j = await r.json();
+      if (!r.ok) return res.status(r.status).json(j);
+      const modelos = (j.models || [])
+        .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .map((m) => ({ nome: m.name.replace(/^models\//, ""), titulo: m.displayName, pensa: !!m.thinking }));
+      return res.json({ modelos });
+    } catch (e) {
+      return res.status(502).json({ error: "Falha ao listar modelos" });
+    }
+  }
+
   // O app pergunta se a IA está disponível
   if (req.method === "GET") return res.json({ ok: !!KEY });
   if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido" });
@@ -15,12 +32,14 @@ module.exports = async (req, res) => {
 
   const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
   // Modelo pode ser trocado na Vercel pela variável GEMINI_MODEL, sem mexer no código
-  const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  // Para testes, ?modelo=<nome> escolhe outro modelo do Gemini e ?semRepetir=1 desliga as novas tentativas
+  const pedido = typeof q.modelo === "string" && /^gemini-[\w.-]+$/.test(q.modelo) ? q.modelo : "";
+  const MODEL = pedido || process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
   // Quando o Google está sobrecarregado (503/500/429) ou a conexão cai, tenta de novo sozinho,
   // com pausas crescentes. Não começa nova tentativa depois de 150 s, para caber no limite da Vercel.
-  const PAUSAS = [2000, 5000, 10000];
+  const PAUSAS = q.semRepetir ? [] : [2000, 5000, 10000];
   const inicio = Date.now();
   let status = 502, text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
   for (let i = 0; ; i++) {
