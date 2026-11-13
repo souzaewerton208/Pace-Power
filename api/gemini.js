@@ -15,8 +15,10 @@ module.exports = async (req, res) => {
 
   try {
     const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    // Modelo pode ser trocado na Vercel pela variável GEMINI_MODEL, sem mexer no código
+    const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
     const r = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
       { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body }
     );
     const text = await r.text();
