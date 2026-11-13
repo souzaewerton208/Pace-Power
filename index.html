@@ -688,13 +688,14 @@ const FB_MSG={
  "permission-denied":"As regras do Firestore estão bloqueando. Cole as regras do guia em Firestore > Regras e publique.",
  "not-found":"O banco Firestore ainda não foi criado. Crie em Firestore Database > Criar banco de dados.",
  "failed-precondition":"O banco Firestore ainda não foi criado ou não está pronto. Crie em Firestore Database > Criar banco de dados.",
- "unavailable":"O Firebase não respondeu. Os dados ficam no aparelho e sincronizam depois."
+ "unavailable":"O Firebase não respondeu. Os dados ficam no aparelho e sincronizam depois.",
+ "load-failed":"Não foi possível carregar o Firebase. Verifique a internet ou desative bloqueadores de anúncio para este site e recarregue."
 };
 function setSync(kind,text,detail){const el=document.getElementById("sync");if(!el)return;el.className="sync "+kind;el.querySelector("span").textContent=text;el.title=detail||text;el.onclick=kind==="err"?()=>alert(detail||text):null}
 function syncOk(){setSync("ok","Sincronizado","Os dados estão salvos na nuvem e aparecem nos dois aparelhos.")}
 function fbFail(e){
  const code=(e&&e.code)||"";const msg=FB_MSG[code]||("Erro ao salvar na nuvem"+(code?` (${code})`:"")+". Os dados ficaram só neste aparelho.");
- console.error("Firebase:",e);
+ console.error("Firebase:",code,(e&&e.message)||e);
  if(code==="permission-denied")state.readOnly=true;
  setSync("err","Não sincronizado",msg);banner(msg);
 }
@@ -1443,6 +1444,9 @@ function bindWeekWatchers(){
 }
 
 async function initCloud(){
+ /* o script do Firebase é um módulo e só roda depois deste: espera ele ficar pronto */
+ for(let i=0;i<150&&!window.dbReady;i++)await new Promise(r=>setTimeout(r,100));
+ if(!window.dbReady){fbFail({code:"load-failed"});return}
  const ok=await window.dbReady;
  if(!ok||!window.fb||!window.fb.ready){fbFail(window.fbError||{code:"unavailable"});return}
  try{await window.fb.get(P_CFG);await window.fb.merge("status/ping",{t:Date.now()})}
