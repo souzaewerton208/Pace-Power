@@ -271,6 +271,18 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .edit-form label{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
 .edit-form input,.edit-form textarea{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:7px 9px;font-size:.9rem}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:650;border-radius:999px;padding:4px 11px;border:1px solid var(--line);background:var(--surface);color:var(--muted);white-space:nowrap;cursor:default}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.ok i{background:var(--ok)} .sync.ok{color:var(--ok)}
+.sync.err{color:#C0392B;border-color:#E6A39A;cursor:pointer} .sync.err i{background:#C0392B}
+.hist{width:100%;border-collapse:collapse;font-size:.88rem}
+.hist th,.hist td{padding:8px 6px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:middle}
+.hist th{font-size:.78rem;color:var(--muted);font-weight:700}
+.hb{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.hb span{display:inline-block;height:6px;border-radius:3px;background:var(--line-2);width:56px;overflow:hidden}
+.hb span b{display:block;height:100%}
+.trend{margin-top:12px;font-size:.9rem;color:var(--muted)}
+.trend b{color:var(--ink)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:no-preference){.dayname{animation:rise .32s cubic-bezier(.2,.8,.2,1)}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
 </style>
@@ -284,6 +296,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
     </div>
     <div class="wk" id="wk"></div>
     <div class="race" id="race"></div>
+    <div class="sync" id="sync" title="Status da sincronização"><i></i><span>Conectando…</span></div>
   </div>
   <nav class="tabs notranslate" translate="no" role="tablist" id="tabs">
     <button role="tab" data-tab="dia" aria-selected="true">Dia</button>
@@ -337,11 +350,15 @@ window.dbReady = new Promise(async (resolve) => {
       async set(path, data) {
         await setDoc(refOf(path), JSON.parse(JSON.stringify(data)));
       },
+      async merge(path, data) {
+        await setDoc(refOf(path), JSON.parse(JSON.stringify(data)), { merge: true });
+      },
       watch(path, cb) {
         return onSnapshot(refOf(path), (snap) => {
           if (snap.exists()) cb(snap.data());
         }, (err) => {
           console.warn("Firestore watch:", err);
+          if (window.onFbError) window.onFbError(err);
         });
       },
       async listLib() {
@@ -608,6 +625,9 @@ const state={
  dia:0,
  tab:"dia",
  connected:false,
+ currentId:"",
+ hist:null,
+ histLoading:false,
  readOnly:false,
  draft:null,
  dietDraft:null,
@@ -631,21 +651,54 @@ async function load(p){
 }
 
 const tm={};
+function cloudCopy(p,d){
+ /* a chave do Gemini nunca vai para a nuvem: fica só no aparelho */
+ if(p===P_CFG&&d){const c=JSON.parse(JSON.stringify(d));c.geminiKey="";return c}
+ return d;
+}
 function save(p,d){
  lsSet(p,d);
  if(!window.fb||!window.fb.ready||state.readOnly) return;
  clearTimeout(tm[p]);
  tm[p]=setTimeout(async()=>{
-  try{
-   await window.fb.set(p,d);
-  }catch(e){
-   if(e&&e.code==="permission-denied"){
-    state.readOnly=true;
-    banner("Aviso: o modo de teste do banco de dados expirou. Atualize as regras no Firestore para continuar sincronizando.");
-   }
-  }
+  try{await window.fb.set(p,cloudCopy(p,d));syncOk()}
+  catch(e){fbFail(e)}
  },450);
 }
+/* grava só o pedaço que mudou no registro da semana, sem apagar o que o outro marcou */
+function saveLog(part){
+ lsSet(pLog(),state.log);
+ if(!window.fb||!window.fb.ready||state.readOnly) return;
+ window.fb.merge(pLog(),part).then(syncOk).catch(fbFail);
+}
+/* plano: sempre guarda a semana; só vira a "semana atual" dos dois se for a atual */
+function savePlan(){
+ save("semanas/v2-"+state.week.id,state.week);
+ if(!state.currentId||state.week.id===state.currentId){state.currentId=state.week.id;save(P_PLAN,state.week)}
+}
+
+/* status da sincronização */
+const FB_MSG={
+ "auth/operation-not-allowed":"O login anônimo está desligado no Firebase. Ative em Authentication > Sign-in method > Anônimo.",
+ "auth/admin-restricted-operation":"O login anônimo está desligado no Firebase. Ative em Authentication > Sign-in method > Anônimo.",
+ "auth/configuration-not-found":"O Authentication não foi ativado no projeto Firebase. Abra Authentication e clique em Começar, depois ative o login Anônimo.",
+ "auth/network-request-failed":"Sem internet no momento. Os dados ficam no aparelho e sincronizam quando a conexão voltar.",
+ "auth/api-key-not-valid":"A chave do Firebase no código não é válida para este domínio. Confira a apiKey e as restrições de domínio no Google Cloud.",
+ "auth/requests-from-referer-are-blocked":"O domínio da Vercel não está liberado na chave do Firebase. Libere o domínio nas restrições da chave no Google Cloud.",
+ "permission-denied":"As regras do Firestore estão bloqueando. Cole as regras do guia em Firestore > Regras e publique.",
+ "not-found":"O banco Firestore ainda não foi criado. Crie em Firestore Database > Criar banco de dados.",
+ "failed-precondition":"O banco Firestore ainda não foi criado ou não está pronto. Crie em Firestore Database > Criar banco de dados.",
+ "unavailable":"O Firebase não respondeu. Os dados ficam no aparelho e sincronizam depois."
+};
+function setSync(kind,text,detail){const el=document.getElementById("sync");if(!el)return;el.className="sync "+kind;el.querySelector("span").textContent=text;el.title=detail||text;el.onclick=kind==="err"?()=>alert(detail||text):null}
+function syncOk(){setSync("ok","Sincronizado","Os dados estão salvos na nuvem e aparecem nos dois aparelhos.")}
+function fbFail(e){
+ const code=(e&&e.code)||"";const msg=FB_MSG[code]||("Erro ao salvar na nuvem"+(code?` (${code})`:"")+". Os dados ficaram só neste aparelho.");
+ console.error("Firebase:",e);
+ if(code==="permission-denied")state.readOnly=true;
+ setSync("err","Não sincronizado",msg);banner(msg);
+}
+window.onFbError=fbFail;
 
 const P_PLAN="plano/v2", P_CFG="config/v2", P_WEEKS="semanas_lista/v2", pLog=()=>"registro/v2-"+state.week.id, pRes=()=>"resultados/v2-"+state.week.id;
 const getApiKey=()=>(state.cfg.geminiKey||localStorage.getItem("gemini_api_key")||"").trim();
@@ -662,7 +715,7 @@ const sum=a=>(a||[]).reduce((x,y)=>x+(+y||0),0);
 const num=v=>String(+v||0).replace(".",",");
 function rich(t,pace){return esc(nm(t)).replace(/Z([1-5])/g,(m,n)=>{const p=pace&&state.cfg.paces[n-1]?`<small>${esc(state.cfg.paces[n-1])}</small>`:"";return `<span class="zc z${n}" title="${esc(ZD[n-1])}">Z${n}${p}</span>`})}
 const isC=k=>!!state.log.chk[k];
-function setC(k,v){state.log.chk[k]=v;save(pLog(),state.log)}
+function setC(k,v){state.log.chk[k]=v;saveLog({chk:{[k]:v}})}
 const opt=d=>state.log.opt[d]||"a";
 function banner(t){const b=document.getElementById("banner");b.textContent=t;b.hidden=!t}
 function zstripe(z){const t=sum(z);if(!t)return `<div class="zs"></div>`;return `<div class="zs" aria-hidden="true">${z.map((m,i)=>m?`<span style="width:${m/t*100}%;background:${zc(i)}"></span>`:"").join("")}</div>`}
@@ -810,6 +863,7 @@ function vPainel(v){
    <div class="row"><span>Sono de 7h ou mais</span><b>${cnt("power","sono")} / ${cnt("pace","sono")} dias</b></div>
    <div class="row"><span>Refeições ${esc(NP())}</span><b>${mealsPo} de ${mtPo} (${Math.round(mealsPo/mtPo*100)}%)</b></div>
    <div class="row"><span>Refeições ${esc(NA())}</span><b>${mealsPa} de ${mtPa} (${Math.round(mealsPa/mtPa*100)}%)</b></div></div>
+  ${histPanel()}
   <div class="panel wide"><h3>Ajustes</h3><p class="sub">Paces por zona da planilha de corrida, nomes exibidos no app, data da prova e chave de IA do Gemini.</p>
    <div class="form">${ZN.map((z,i)=>`<label>Pace ${z}<input data-cfg="pace" data-i="${i}" placeholder="ex.: 6:28–6:15" value="${esc(c.paces[i])}"></label>`).join("")}
     <label>Nome de quem treina Hyrox<input data-cfg="np" value="${esc(c.nomes.power)}" maxlength="20"></label>
@@ -817,6 +871,58 @@ function vPainel(v){
     <label>Data do Hyrox Fortaleza 2027<input type="date" data-cfg="prova" value="${esc(c.prova)}"></label>
     <label>Chave API do Gemini (IA)<input type="password" data-cfg="apikey" placeholder="Cole a chave do AI Studio" value="${esc(getApiKey())}"></label></div></div>
  </div>`;
+}
+
+/* Evolução: desempenho semana a semana */
+function weekStats(plan,log,res){
+ const chk=(log&&log.chk)||{},D=(plan&&plan.dias)||[];
+ const c=(w,k)=>[0,1,2,3,4,5].filter(i=>chk[`${i}:${w}:${k}`]).length;
+ const poPlan=D.filter(d=>d.power&&!/opcional/i.test((d.power.titulo||"")+" "+(d.power.tipo||""))).length||5;
+ const runs=D.filter(d=>d.pace&&d.pace.corrida).length;
+ const runsDone=D.filter((d,i)=>d.pace&&d.pace.corrida&&chk[i+":pace:corrida"]).length;
+ const kmOf=w=>Object.values((res&&res[w])||{}).flat().filter(a=>a&&a.run).reduce((s,a)=>s+(+a.km||0),0);
+ const mealsOf=(w,list)=>[0,1,2,3,4,5].reduce((s,i)=>s+list.filter(m=>chk[`${i}:${w}:${m.k}`]).length,0);
+ const po=Math.min(c("power","treino"),poPlan),pa=c("pace","treino");
+ return {po,poPlan,pa,runs,runsDone,
+  adPo:poPlan?po/poPlan:0, adPa:(6+runs)?(pa+runsDone)/(6+runs):0,
+  kmPa:kmOf("pace"),kmPo:kmOf("power"),
+  sonoPo:c("power","sono"),sonoPa:c("pace","sono"),
+  refPo:mealsOf("power",DIET_EWERTON.refeicoes)/(DIET_EWERTON.refeicoes.length*6||1),
+  refPa:mealsOf("pace",MEALS_JOANNA)/(MEALS_JOANNA.length*6||1)};
+}
+async function loadHist(){
+ if(state.histLoading)return;state.histLoading=true;
+ const list=(state.weeks&&state.weeks.length?state.weeks:[{id:state.week.id,nome:state.week.nome}]).slice(-12);
+ const out={};
+ for(const w of list){
+  if(w.id===state.week.id)continue;
+  try{out[w.id]={nome:w.nome,plan:await load("semanas/v2-"+w.id),log:await load("registro/v2-"+w.id),res:await load("resultados/v2-"+w.id)}}catch(e){}
+ }
+ state.hist=out;state.histLoading=false;if(state.tab==="painel")render();
+}
+const pct=x=>Math.round((x||0)*100)+"%";
+const bar=(x,color)=>`<div class="hb"><span><b style="width:${Math.min(100,Math.round((x||0)*100))}%;background:${color}"></b></span>${pct(x)}</div>`;
+function histPanel(){
+ if(!state.hist&&!state.histLoading)setTimeout(loadHist,0);
+ const list=(state.weeks&&state.weeks.length?state.weeks:[{id:state.week.id,nome:state.week.nome}]).slice(-12);
+ if(!list.some(w=>w.id===state.week.id))list.push({id:state.week.id,nome:state.week.nome});
+ list.sort((a,b)=>a.id.localeCompare(b.id));
+ const rows=list.map(w=>{const cur=w.id===state.week.id,h=(state.hist||{})[w.id];
+  const st=cur?weekStats(state.week,state.log,state.res):(h&&h.plan?weekStats(h.plan,h.log,h.res):null);return {w,st,cur}}).filter(r=>r.st);
+ let trend="";
+ if(rows.length>=2){const a=rows[rows.length-2].st,b=rows[rows.length-1].st;
+  const t=(n,x,y)=>`${esc(n)}: adesão ${y>x?"subiu":y<x?"caiu":"manteve"} ${y!==x?`de ${pct(x)} para `:"em "}<b>${pct(y)}</b>`;
+  trend=`<p class="trend">${t(NP(),a.adPo,b.adPo)}. ${t(NA(),a.adPa,b.adPa)}.</p>`}
+ return `<div class="panel wide"><h3>Evolução semana a semana</h3><p class="sub">Adesão aos treinos, km realizados, sono e dieta de cada semana, para acompanhar o desempenho dos dois ao longo do tempo.</p>
+ ${state.histLoading&&!state.hist?`<p class="sub">Carregando semanas anteriores…</p>`:""}
+ <div class="tbl"><table class="hist"><thead><tr><th>Semana</th><th>Treinos ${esc(NP())}</th><th>Treinos ${esc(NA())} (com corridas)</th><th>Km corridos ${esc(NA())}</th><th>Km corridos ${esc(NP())}</th><th>Sono 7h+ (${esc(NP())} / ${esc(NA())})</th><th>Dieta (${esc(NP())} / ${esc(NA())})</th></tr></thead><tbody>
+ ${rows.map(({w,st,cur})=>`<tr><td><b>${esc(w.nome||w.id)}</b>${cur?' <span style="color:var(--muted)">(atual)</span>':""}</td>
+  <td>${bar(st.adPo,"var(--power)")}<span class="mt">${st.po} de ${st.poPlan}</span></td>
+  <td>${bar(st.adPa,"var(--pace)")}<span class="mt">${st.pa} de 6, corridas ${st.runsDone} de ${st.runs}</span></td>
+  <td>${num(st.kmPa.toFixed(1))} km</td><td>${num(st.kmPo.toFixed(1))} km</td>
+  <td>${st.sonoPo} / ${st.sonoPa} dias</td><td>${pct(st.refPo)} / ${pct(st.refPa)}</td></tr>`).join("")}
+ </tbody></table></div>${trend}
+ <div class="actions"><button class="btn sm ghost" data-act="hist-reload">Atualizar histórico</button></div></div>`;
 }
 
 /* Plano Alimentar Completo (Ewerton + Joanna + Diário de Adesão & Observações) */
@@ -1017,7 +1123,7 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
 async function usar(){
  save("semanas/v2-"+state.week.id,state.week);
  const prevWeek=state.week;
- state.week=state.draft;state.draft=null;
+ state.week=state.draft;state.draft=null;state.currentId=state.week.id;state.hist=null;
  save("semanas/v2-"+state.week.id,state.week);
  save(P_PLAN,state.week);
  const map=new Map(state.weeks.map(x=>[x.id,x]));
@@ -1036,7 +1142,6 @@ async function switchWeek(id){
  const target=await load("semanas/v2-"+id);
  if(!valid(target)){banner("Não foi possível carregar essa semana.");return;}
  state.week=target;state.editing=null;
- save(P_PLAN,state.week);
  applyLog(await load(pLog()));
  const rr=await load(pRes());state.res={pace:(rr&&rr.pace)||{},power:(rr&&rr.power)||{}};
  bindWeekWatchers();
@@ -1148,7 +1253,7 @@ async function importRes(file,who){
      else state.log.chk[d+":power:treino"]=true}});
    if(wk===state.week.id)state.res=cur;save(path,cur);
   }
-  save(pLog(),state.log);
+  saveLog({chk:state.log.chk});
   render();say(id,`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`);
  }catch(e){say(id,ERR(e))}
 }
@@ -1213,9 +1318,8 @@ function aplicar(id,d,slot){
  const t=state.lib.find(x=>x.id===id);if(!t)return;
  const s={titulo:t.titulo,desc:t.desc||"",tipo:t.tipo||t.categoria||"Treino",min:+t.min||0,rpe:+t.rpe||0,km:+t.km||0,zonas:(t.zonas||[0,0,0,0,0]).slice(0,5),blocos:t.blocos||[],nota:""};
  const day=state.week.dias[d];if(slot==="power")day.power=s;else day.pace[slot]=s;
- if(slot!=="power"){state.log.opt[d]=slot;save(pLog(),state.log)}
- save("semanas/v2-"+state.week.id,state.week);
- save(P_PLAN,state.week);state.dia=d;state.tab="dia";render();scrollTo(0,0);
+ if(slot!=="power"){state.log.opt[d]=slot;saveLog({opt:{[d]:slot}})}
+ savePlan();state.dia=d;state.tab="dia";render();scrollTo(0,0);
 }
 async function delLib(id){
  if(state.delConfirm!==id){state.delConfirm=id;render();return;}
@@ -1234,7 +1338,7 @@ view.addEventListener("click",e=>{
  if(t.dataset.dietDia!==undefined){state.dia=+t.dataset.dietDia;render();return}
  if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;render();return}
  if(t.dataset.go!==undefined){state.dia=+t.dataset.go;state.editing=null;state.tab="dia";render();scrollTo(0,0);return}
- if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;save(pLog(),state.log);render();return}
+ if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
  const act=t.dataset.act;
  if(act==="diet-st"){
   const who=state.dietWho==="pace"?"pace":"power";
@@ -1243,7 +1347,7 @@ view.addEventListener("click",e=>{
   state.log.dietStatus[k]=(state.log.dietStatus[k]===t.dataset.st)?"":t.dataset.st;
   const obsEl=document.getElementById("diet-obs-input");
   if(obsEl){state.log.dietObs=state.log.dietObs||{};state.log.dietObs[k]=obsEl.value.trim();}
-  save(pLog(),state.log);render();return;
+  saveLog({dietStatus:{[k]:state.log.dietStatus[k]},dietObs:{[k]:(state.log.dietObs||{})[k]||""}});render();return;
  }
  if(act==="save-diet-obs"){
   const who=state.dietWho==="pace"?"pace":"power";
@@ -1251,8 +1355,9 @@ view.addEventListener("click",e=>{
   const obsEl=document.getElementById("diet-obs-input");
   state.log.dietObs=state.log.dietObs||{};
   state.log.dietObs[k]=obsEl?obsEl.value.trim():"";
-  save(pLog(),state.log);render();return;
+  saveLog({dietObs:{[k]:state.log.dietObs[k]}});render();return;
  }
+ if(act==="hist-reload"){state.hist=null;render();return}
  if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace");
  if(act==="imp-dieta")return pick("dieta",".pdf,.docx,.txt,image/*");
  if(act==="imp-lib")return pick("lib",".txt,.md,.pdf,.docx,.csv,image/*");
@@ -1286,7 +1391,7 @@ view.addEventListener("click",e=>{
     if(cur.itens.length)bls.push(cur);
     target.blocos=bls;
    }
-   save("semanas/v2-"+state.week.id,state.week);save(P_PLAN,state.week);
+   savePlan();
   }
   state.editing=null;render();return;
  }
@@ -1339,10 +1444,12 @@ function bindWeekWatchers(){
 
 async function initCloud(){
  const ok=await window.dbReady;
- if(!ok||!window.fb||!window.fb.ready)return;
- state.connected=true;
+ if(!ok||!window.fb||!window.fb.ready){fbFail(window.fbError||{code:"unavailable"});return}
+ try{await window.fb.get(P_CFG);await window.fb.merge("status/ping",{t:Date.now()})}
+ catch(e){fbFail(e);return}
+ state.connected=true;syncOk();
 
- const hw=await load(P_PLAN);if(valid(hw))state.week=hw;
+ const hw=await load(P_PLAN);if(valid(hw)){state.week=hw;state.currentId=hw.id}
  const hwl=await load(P_WEEKS);if(hwl&&Array.isArray(hwl.list))state.weeks=hwl.list;
  else state.weeks=[{id:state.week.id,nome:state.week.nome}];
  applyLog(await load(pLog()));
@@ -1358,11 +1465,13 @@ async function initCloud(){
 
  /* Sincronização em tempo real entre dispositivos */
  window.fb.watch(P_PLAN,(w)=>{
-  if(valid(w)&&w.id!==state.week.id){
-   state.week=w;lsSet(P_PLAN,w);bindWeekWatchers();render();
-  }else if(valid(w)){
-   state.week=w;lsSet(P_PLAN,w);render();
-  }
+  if(!valid(w))return;
+  const wasCurrent=!state.currentId||state.week.id===state.currentId;
+  state.currentId=w.id;lsSet(P_PLAN,w);
+  if(!wasCurrent)return; /* quem está olhando uma semana antiga continua nela */
+  const changed=w.id!==state.week.id;state.week=w;
+  if(changed){state.hist=null;load(pLog()).then(l=>{applyLog(l);load(pRes()).then(rr=>{state.res={pace:(rr&&rr.pace)||{},power:(rr&&rr.power)||{}};bindWeekWatchers();render()})})}
+  else render();
  });
  window.fb.watch(P_CFG,(c)=>{applyCfg(c);lsSet(P_CFG,state.cfg);render()});
  window.fb.watch(P_WEEKS,(wl)=>{if(wl&&Array.isArray(wl.list)){state.weeks=wl.list;render()}});
@@ -1372,7 +1481,7 @@ async function initCloud(){
 }
 
 (function init(){
- const w=lsGet(P_PLAN);if(valid(w))state.week=w;
+ const w=lsGet(P_PLAN);if(valid(w)){state.week=w;state.currentId=w.id}
  applyLog(lsGet(pLog()));applyCfg(lsGet(P_CFG));
  const lr=lsGet(pRes());if(lr)state.res={pace:lr.pace||{},power:lr.power||{}};
  applyDiet(lsGet("dieta/v2"));state.lib=lsGet("biblioteca")||[];
