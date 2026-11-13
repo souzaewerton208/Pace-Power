@@ -16,7 +16,7 @@
 <style>
 /* Design Tokens - Tema Claro Fixo para máxima legibilidade */
 :root{
-  --bg:#EDEFEE; --surface:#FFFFFF; --surface-2:#F4F6F5; --ink:#0F1720; --muted:#5B6672; --line:#D6DCD9; --line-2:#E6EAE8;
+  --bg:#EEF1F7; --surface:#FFFFFF; --surface-2:#F5F7FB; --ink:#16204A; --muted:#5A6482; --line:#D8DDEA; --line-2:#E7EBF3;
   --power:#3B2FD9; --power-soft:#E8E6FC; --pace:#D6336C; --pace-soft:#FBE4ED;
   --z1:#9AA5AE; --z2:#3B82C4; --z3:#3FA34D; --z4:#E8892B; --z5:#D63C3C;
   --ok:#23885A; --warn:#C27803; --on-ink:#FFFFFF;
@@ -60,15 +60,16 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:22px}
 .strip button{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:9px 4px 8px;cursor:pointer;text-align:center;transition:border-color .15s}
 .strip button:hover{border-color:var(--muted)}
-.strip button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+.strip button[aria-pressed="true"]{background:linear-gradient(160deg,var(--ink),#26306B);border-color:var(--ink);color:var(--on-ink);box-shadow:0 6px 16px -8px rgba(22,32,74,.55)}
 .strip button[aria-pressed="true"] .dt{color:inherit;opacity:.75}
-.strip .d{font-stretch:72%;font-weight:800;font-size:1.2rem;line-height:1}
+.strip .d{font-stretch:72%;font-weight:800;font-size:1.2rem;line-height:1;color:inherit}
 .strip .dt{font-size:.75rem;color:var(--muted);margin-top:2px}
 .strip .run{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--pace)}
 .strip .ticks{display:flex;justify-content:center;gap:4px;margin-top:6px}
 .tick{width:14px;height:4px;border-radius:2px;background:var(--line)}
 .tick.po.on{background:var(--power)} .tick.pa.on{background:var(--pace)}
-.strip .hoje{color:var(--ok);font-weight:700}
+.strip .hoje{color:var(--pace);font-weight:700}
+.strip button[aria-pressed="true"] .hoje{color:#FF9DBE}
 
 .dayhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .dayname{font-stretch:65%;font-weight:900;font-size:clamp(3.4rem,12vw,7rem);line-height:.82;letter-spacing:-.02em}
@@ -267,10 +268,30 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .wk-select{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-weight:700;font-size:.86rem;cursor:pointer;margin-right:4px}
 .edit-btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:650;color:var(--muted);cursor:pointer}
 .edit-btn:hover{color:var(--ink);border-color:var(--muted)}
+.card-acts{display:inline-flex;gap:6px;flex-wrap:wrap}
+.edit-btn.ai{color:var(--power);border-color:color-mix(in srgb,var(--power) 35%,var(--line))}
+.redo-box{border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 4px;background:var(--surface-2)}
+.redo-box.power{border-color:color-mix(in srgb,var(--power) 45%,var(--line))}
+.redo-box.pace{border-color:color-mix(in srgb,var(--pace) 45%,var(--line))}
+.redo-box textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);resize:vertical;font:inherit}
+.redo-t{margin:0 0 6px;font-size:.8rem;font-weight:700;color:var(--muted)}
+.redo-h{margin:0 0 4px;font-size:1.15rem}
+.redo-err{margin:8px 0 0;font-size:.86rem;color:#C0392B}
+.who-seg{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;margin:0 0 14px}
+.who-seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font-weight:650;color:var(--muted);cursor:pointer}
+.who-seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
 .edit-form{display:grid;gap:8px;margin-top:8px}
 .edit-form label{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
 .edit-form input,.edit-form textarea{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:7px 9px;font-size:.9rem}
 .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:640px){
+ .bar-in .mark{order:1}
+ .bar-in .sync{order:2;margin-left:auto}
+ .bar-in .wk{order:3;flex:1 1 auto;min-width:0;font-size:.82rem}
+ .bar-in .race{display:none}
+ .bar-in .mark{font-size:1.4rem}
+ .bar-in .sync{font-size:.74rem;padding:3px 9px}
+}
 .sync{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:650;border-radius:999px;padding:4px 11px;border:1px solid var(--line);background:var(--surface);color:var(--muted);white-space:nowrap;cursor:default}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .sync.ok i{background:var(--ok)} .sync.ok{color:var(--ok)}
@@ -296,7 +317,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
     </div>
     <div class="wk" id="wk"></div>
     <div class="race" id="race"></div>
-    <div class="sync" id="sync" title="Status da sincronização"><i></i><span>Conectando…</span></div>
+    <div class="sync" id="sync" title="Status da sincronização"><i></i><span>Conectando</span></div>
   </div>
   <nav class="tabs notranslate" translate="no" role="tablist" id="tabs">
     <button role="tab" data-tab="dia" aria-selected="true">Dia</button>
@@ -505,7 +526,7 @@ let MEALS_JOANNA=[
 ];
 
 /* Plano alimentar completo do Ewerton (Definição muscular · ~2.600 kcal/dia · Sem lactose) */
-const DIET_EWERTON={
+let DIET_EWERTON={
  titulo:"Fase de definição muscular e preservação de massa magra",
  sub:"Objetivo: reduzir gordura corporal (79 kg → ~77 kg), preservar massa muscular e manter força nos treinos (19h–20h). Restrição: intolerância à lactose.",
  macros:["~2.600 kcal/dia","Proteínas: 160–175 g","Carboidratos: 300–330 g","Gorduras: 65–75 g","Sem lactose","Creatina: 3–5 g/dia"],
@@ -614,7 +635,7 @@ DEFAULT_WEEK.dias.forEach(d=>[d.power,d.pace.a,d.pace.b,d.pace.corrida].forEach(
 
 const state={
  diet:{data:"06/11/2026",kcal:1647},
- dietWho:"power",
+ dietWho:"pace",
  res:{pace:{},power:{}},
  lib:[],
  libFilter:"Todos",
@@ -625,6 +646,8 @@ const state={
  dia:0,
  tab:"dia",
  connected:false,
+ aiServer:false,
+ genWho:"ambos",partDraft:null,redo:null,ajustesTxt:"",
  currentId:"",
  hist:null,
  histLoading:false,
@@ -692,12 +715,12 @@ const FB_MSG={
  "load-failed":"Não foi possível carregar o Firebase. Verifique a internet ou desative bloqueadores de anúncio para este site e recarregue."
 };
 function setSync(kind,text,detail){const el=document.getElementById("sync");if(!el)return;el.className="sync "+kind;el.querySelector("span").textContent=text;el.title=detail||text;el.onclick=kind==="err"?()=>alert(detail||text):null}
-function syncOk(){setSync("ok","Sincronizado","Os dados estão salvos na nuvem e aparecem nos dois aparelhos.")}
+function syncOk(){setSync("ok","Online","Os dados estão salvos na nuvem e aparecem nos dois aparelhos.")}
 function fbFail(e){
  const code=(e&&e.code)||"";const msg=FB_MSG[code]||("Erro ao salvar na nuvem"+(code?` (${code})`:"")+". Os dados ficaram só neste aparelho.");
  console.error("Firebase:",code,(e&&e.message)||e);
  if(code==="permission-denied")state.readOnly=true;
- setSync("err","Não sincronizado",msg);banner(msg);
+ setSync("err","Offline",msg);banner(msg);
 }
 window.onFbError=fbFail;
 
@@ -756,8 +779,8 @@ function editFormHTML(s,d,slot,isRun){
 function powerCard(s,d){
  const isEd=state.editing&&state.editing.dia===d&&state.editing.slot==="power";
  return `<article class="card">${zstripe(s.zonas)}<div class="ci">
-  <div class="kind"><span>${esc(s.tipo)}</span><button class="edit-btn" data-act="edit-card" data-slot="power" data-d="${d}">Editar</button></div>
-  ${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
+  <div class="kind"><span>${esc(s.tipo)}</span><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="power" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="power" data-d="${d}">Editar</button></span></div>
+  ${redoBox(d,"power")}${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}</div>
   ${blocos(s,false)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
@@ -780,8 +803,8 @@ function optCard(p,d){
  const isEd=state.editing&&state.editing.dia===d&&state.editing.slot===o;
  const la=run?"Complemento":"Musculação", lb=run?"Regenerativo":"Funcional";
  return `<article class="card">${zstripe(s.zonas)}<div class="ci">
-  <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div><button class="edit-btn" data-act="edit-card" data-slot="${o}" data-d="${d}">Editar</button></div>
-  ${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
+  <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="${o}" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="${o}" data-d="${d}">Editar</button></span></div>
+  ${redoBox(d,o)}${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span></div>
   ${blocos(s,true)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
@@ -870,7 +893,7 @@ function vPainel(v){
     <label>Nome de quem treina Hyrox<input data-cfg="np" value="${esc(c.nomes.power)}" maxlength="20"></label>
     <label>Nome de quem treina corrida<input data-cfg="na" value="${esc(c.nomes.pace)}" maxlength="20"></label>
     <label>Data do Hyrox Fortaleza 2027<input type="date" data-cfg="prova" value="${esc(c.prova)}"></label>
-    <label>Chave API do Gemini (IA)<input type="password" data-cfg="apikey" placeholder="Cole a chave do AI Studio" value="${esc(getApiKey())}"></label></div></div>
+    <label>Chave do Gemini neste aparelho (opcional${state.aiServer?": a IA já está ativa pelo servidor":""})<input type="password" data-cfg="apikey" placeholder="${state.aiServer?"Não precisa preencher":"Cole a chave do AI Studio"}" value="${esc(getApiKey())}"></label></div></div>
  </div>`;
 }
 
@@ -931,7 +954,7 @@ const STATUS_LABELS={ok:"Segui o plano",partial:"Segui parcialmente",off:"Não s
 
 function vNutri(v){
  const D=state.week.dias;
- const who=state.dietWho==="pace"?"pace":"power";
+ const who=state.dietWho==="power"?"power":"pace";
  const isPo=who==="power";
  const meals=isPo?DIET_EWERTON.refeicoes:MEALS_JOANNA;
  const d=state.dia;
@@ -941,12 +964,12 @@ function vNutri(v){
 
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Plano alimentar</h2>
   <p class="lead">${isPo?`Plano do ${esc(NP())}: ${esc(DIET_EWERTON.titulo)}.`:`Plano da nutricionista da ${esc(NA())}${state.diet.data?`, de ${esc(state.diet.data)}`:""}${state.diet.kcal?`, cerca de ${Number(state.diet.kcal).toLocaleString("pt-BR")} kcal por dia`:""}.`}</p></div>
-  ${!isPo?`<button class="btn sm" data-act="imp-dieta">Carregar nova dieta (${esc(NA())})</button>`:""}
+  <button class="btn sm" data-act="imp-dieta">Carregar nova dieta (${esc(isPo?NP():NA())})</button>
  </div>
 
  <div class="diet-tabs" role="group" aria-label="Selecionar plano alimentar">
-  <button class="po" data-diet-who="power" aria-pressed="${isPo}"><i></i>${esc(NP())} · ~2.600 kcal (Sem lactose)</button>
-  <button class="pa" data-diet-who="pace" aria-pressed="${!isPo}"><i></i>${esc(NA())} · ${state.diet.kcal?Number(state.diet.kcal).toLocaleString("pt-BR"):"1.647"} kcal (Lorena Fernandes)</button>
+  <button class="pa" data-diet-who="pace" aria-pressed="${!isPo}"><i></i>${esc(NA())} · ${state.diet.kcal?Number(state.diet.kcal).toLocaleString("pt-BR"):"1.647"} kcal</button>
+  <button class="po" data-diet-who="power" aria-pressed="${isPo}"><i></i>${esc(NP())} · ${Number(DIET_EWERTON.kcal||2600).toLocaleString("pt-BR")} kcal</button>
  </div>
 
  <div class="upl" id="upl-dieta"></div><div id="prev-dieta"></div>
@@ -992,9 +1015,9 @@ function vNutri(v){
  <section class="diet-meta po">
   <div style="font-weight:750;font-size:1.05rem">${esc(DIET_EWERTON.titulo)}</div>
   <div style="font-size:.88rem;color:var(--muted);margin-top:2px">${esc(DIET_EWERTON.sub)}</div>
-  <div class="macro-row">${DIET_EWERTON.macros.map(m=>`<span class="macro-pill po">${esc(m)}</span>`).join("")}</div>
-  <div style="margin-top:12px;font-size:.82rem;font-weight:700;color:var(--muted)">Alternância das proteínas (Almoço e Jantar)</div>
-  <div class="rot-grid">${DIET_EWERTON.alternancia.map(([dia,prot])=>`<div class="rot-item"><b>${esc(dia)}</b>${esc(prot)}</div>`).join("")}</div>
+  ${(DIET_EWERTON.macros||[]).length?`<div class="macro-row">${DIET_EWERTON.macros.map(m=>`<span class="macro-pill po">${esc(m)}</span>`).join("")}</div>`:""}
+  ${(DIET_EWERTON.alternancia||[]).length?`<div style="margin-top:12px;font-size:.82rem;font-weight:700;color:var(--muted)">Alternância das proteínas (Almoço e Jantar)</div>
+  <div class="rot-grid">${DIET_EWERTON.alternancia.map(([dia,prot])=>`<div class="rot-item"><b>${esc(dia)}</b>${esc(prot)}</div>`).join("")}</div>`:""}
  </section>
  `:""}
 
@@ -1005,23 +1028,28 @@ function vNutri(v){
  <div class="adh"><table><thead><tr><th>Adesão por refeição (${esc(isPo?NP():NA())})</th>${D.map((_,i)=>`<th>${AB[i]}</th>`).join("")}</tr></thead><tbody>
  ${meals.map(m=>`<tr><td>${m.h} ${m.n}</td>${D.map((_,i)=>`<td><input type="checkbox" aria-label="${m.n}, ${DIAS[i]}" data-k="${i}:${who}:${m.k}" ${isC(`${i}:${who}:${m.k}`)?"checked":""}></td>`).join("")}</tr>`).join("")}
  <tr><td>Água: meta batida</td>${D.map((_,i)=>`<td><input type="checkbox" aria-label="Água, ${DIAS[i]}" data-k="${i}:${who}:agua" ${isC(`${i}:${who}:agua`)?"checked":""}></td>`).join("")}</tr></tbody></table></div>
- <p class="fine">${isPo?esc(DIET_EWERTON.notas):"Quantidades e trocas seguem o plano da nutricionista. Qualquer mudança passa por ela."}</p>`;
+ <p class="fine">${isPo?esc(DIET_EWERTON.notas||"Quantidades e trocas seguem o plano do nutricionista."):"Quantidades e trocas seguem o plano da nutricionista. Qualquer mudança passa por ela."}</p>`;
 }
 
 function vNova(v){
- const hasKey=!!getApiKey();
- v.innerHTML=`<div class="gen"><h2 class="sec">Nova semana</h2>
+ const hasKey=!!getApiKey()||state.aiServer;
+ const gw=state.genWho||"ambos",ind=gw!=="ambos";
+ v.innerHTML=`<div class="gen"><h2 class="sec">${ind?`Refazer treinos ${esc(doDa(gw))}`:"Nova semana"}</h2>
+ <div class="who-seg" role="group" aria-label="Para quem gerar"><button data-gen-who="ambos" aria-pressed="${gw==="ambos"}">Os dois</button><button data-gen-who="power" aria-pressed="${gw==="power"}">Só ${esc(NP())}</button><button data-gen-who="pace" aria-pressed="${gw==="pace"}">Só ${esc(NA())}</button></div>
+ ${ind?`<p class="lead">Refaz só os treinos ${esc(doDa(gw))} na ${esc(state.week.nome)} (semana aberta). Os treinos ${esc(doDa(gw==="power"?"pace":"power"))}, as corridas da planilha e todas as marcações continuam iguais. Para trocar um dia só, use "Refazer com IA" no cartão do dia.</p>`:""}
+ <div ${ind?"hidden":""}>
  <p class="lead">Envie o print/PDF da planilha de corrida ou cole os treinos nos dias certos. O Gemini monta a semana inteira (mantendo a média de 50 a 60 min/dia para a ${esc(NA())}) e salva direto na nuvem para vocês dois.</p>
  ${!hasKey?`<div class="keybox"><div class="lbl" style="margin:0">Ativar geração com IA (Gemini)</div>
   <p class="sub" style="margin:4px 0 0;font-size:.86rem;color:var(--muted)">Cole uma única vez sua chave gratuita do <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> (ela fica sincronizada nos dois celulares):</p>
   <div class="keybox-row"><input type="password" id="nova-apikey" placeholder="AIzaSy..."><button class="btn sm" data-act="save-key">Salvar chave</button></div></div>`:""}
  <div class="tool" style="margin-bottom:8px"><p class="lbl" style="margin:0">1. Corridas da planilha (Segunda a Sábado)</p><button class="btn sm ghost" data-act="imp-runsheet">Ler print ou PDF da planilha</button></div>
  <div class="runs">${AB.map((a,i)=>`<label>${a}<textarea data-run="${i}" placeholder="Sem corrida neste dia"></textarea></label>`).join("")}</div>
- <p class="lbl">2. O que mudar ou focar nesta semana?</p>
- <textarea id="ajustes" rows="3" placeholder="Ex.: dor no joelho no búlgaro; mais SkiErg; sábado vamos viajar."></textarea>
- <div class="actions"><button class="btn" id="gerar">Gerar próxima semana</button><button class="btn ghost" id="parar" hidden>Parar</button></div>
+ </div>
+ <p class="lbl">${ind?`O que mudar nos treinos ${esc(doDa(gw))}?`:"2. O que mudar ou focar nesta semana?"}</p>
+ <textarea id="ajustes" rows="3" placeholder="${ind?"Ex.: não gostei do treino de quarta; quero mais glúteo e menos agachamento.":"Ex.: dor no joelho no búlgaro; mais SkiErg; sábado vamos viajar."}">${esc(state.ajustesTxt||"")}</textarea>
+ <div class="actions"><button class="btn" id="gerar">${ind?`Refazer treinos ${esc(doDa(gw))}`:"Gerar próxima semana"}</button><button class="btn ghost" id="parar" hidden>Parar</button></div>
  <div class="status" id="gst"></div>
- <div id="prev">${state.draft?prevHTML(state.draft):""}</div>
+ <div id="prev">${ind?(state.partDraft&&state.partDraft.who===gw?partPrevHTML(state.partDraft):""):(state.draft?prevHTML(state.draft):"")}</div>
  <details style="margin-top:24px"><summary class="lbl" style="cursor:pointer">Ou colar semana pronta (JSON gerado no chat)</summary>
   <textarea class="paste" id="paste-week-json" placeholder="Cole aqui o JSON da semana para carregar direto sem usar chave IA."></textarea>
   <div class="actions"><button class="btn sm ghost" data-act="paste-week">Carregar semana colada</button></div>
@@ -1040,23 +1068,31 @@ function blobToBase64(blob){
   r.readAsDataURL(blob);
  });
 }
+/* reduz fotos grandes (até 1600 px, JPEG) para caber no envio pela Vercel */
+async function shrinkImage(blob){
+ try{
+  const bmp=await createImageBitmap(blob);const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+  if(k===1&&blob.size<1500000)return blob;
+  const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(b=>r(b||blob),"image/jpeg",.82));
+ }catch(e){return blob}
+}
 async function geminiJson(prompt,images,signal){
  const apiKey=getApiKey();
- if(!apiKey) throw {code:"no_key"};
+ if(!apiKey&&!state.aiServer) throw {code:"no_key"};
  const parts=[{text:prompt}];
  if(images&&images.length){
-  for(const img of images){
+  for(let img of images){
+   if(!apiKey)img=await shrinkImage(img);
    const b64=await blobToBase64(img);
    parts.push({inlineData:{mimeType:img.type||"image/jpeg",data:b64}});
   }
  }
- const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
- const res=await fetch(url,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({contents:[{parts}],generationConfig:{responseMimeType:"application/json"}}),
-  signal
- });
+ const payload=JSON.stringify({contents:[{parts}],generationConfig:{responseMimeType:"application/json"}});
+ /* sem chave no aparelho, usa a chave guardada com segurança na Vercel (/api/gemini) */
+ const url=apiKey?`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`:"/api/gemini";
+ const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:payload,signal});
  if(!res.ok){
   if(res.status===400||res.status===403) throw {code:"bad_key"};
   if(res.status===429) throw {code:"rate_limited"};
@@ -1078,8 +1114,107 @@ function resumo(){const D=state.week.dias,c=(w,k)=>D.filter((_,i)=>isC(`${i}:${w
  const mealsPo=D.reduce((a,_,i)=>a+DIET_EWERTON.refeicoes.filter(m=>isC(`${i}:power:${m.k}`)).length,0);
  return `Power fez ${c("power","treino")} de 6 treinos. Pace fez ${D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length} de ${D.filter(d=>d.pace.corrida).length} corridas e ${c("pace","treino")} de 6 sessões complementares. Sono 7h+: Power ${c("power","sono")}, Pace ${c("pace","sono")} dias. Refeições: Power ${mealsPo} de ${DIET_EWERTON.refeicoes.length*6}, Pace ${mealsPa} de ${MEALS_JOANNA.length*6}.`}
 
+/* ===== Treinos individuais: refazer só de um atleta ===== */
+const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número,"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado"}]}],"nota":"texto curto ou vazio"}`;
+const PERFIL={
+ power:`Atleta "power": quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação, de segunda a sexta; sábado é opcional. Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine, com pelo menos um dia leve de Z2.`,
+ pace:`Atleta "pace": corredora cujas corridas são definidas pelo treinador dela e NÃO podem ser alteradas. Para cada dia há duas opções: "a" musculação (cadeia posterior, superiores, core, estabilidade de joelho e quadril, sem pernas pesadas na véspera de corrida forte ou longão) e "b" funcional, mobilidade e core. Nos dias sem corrida, cada opção tem de 50 a 60 minutos; nos dias com corrida, são complementos de 15 a 20 minutos.`
+};
+const quem=w=>w==="power"?NP():NA();
+const doDa=w=>w==="power"?`do ${NP()}`:`da ${NA()}`;
+function contextoParte(who){
+ return state.week.dias.map((d,i)=>who==="power"
+  ?{dia:DIAS[i],power:d.power,treino_do_pace:d.pace.corrida?`corrida: ${d.pace.corrida.titulo}`:d.pace.a.titulo}
+  :{dia:DIAS[i],corrida_fixa:d.pace.corrida,a:d.pace.a,b:d.pace.b,treino_do_power:`${d.power.titulo} (esforço ${d.power.rpe})`});
+}
+function promptBase(who){
+ return `Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Use os marcadores {power} e {pace} quando citar os atletas, nunca nomes. ${PERFIL[who]}
+Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
+Evite alta intensidade no mesmo dia em que o outro atleta tem treino forte, quando possível.
+Biblioteca de treinos do treinador (prefira adaptar estes treinos):
+${libForPrompt()}`;
+}
+async function gerarParte(who){
+ const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
+ const pedido=(document.getElementById("ajustes").value||"").trim();
+ const forma=who==="power"?'{"power":Sessao}':'{"a":Sessao,"b":Sessao}';
+ const prompt=`${promptBase(who)}
+
+Tarefa: refaça APENAS os treinos do atleta "${who}" nesta semana (segunda a sábado). Não mexa em nada do outro atleta${who==="pace"?" nem nas corridas fixas":""}. Dias que o pedido não mencionar podem ficar iguais ou parecidos com os atuais.
+Pedido do atleta: ${pedido||"variar os treinos mantendo os mesmos objetivos"}
+
+Semana atual (JSON):
+${JSON.stringify(contextoParte(who))}
+
+Responda APENAS com JSON: {"dias":[6 itens, segunda a sábado]}, cada item no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
+ btn.disabled=true;stop.hidden=false;st.textContent=`Refazendo os treinos ${doDa(who)}. Pode levar até 30 segundos…`;ctl=new AbortController();
+ try{
+  const r=await geminiJson(prompt,null,ctl.signal);
+  const ok=r&&Array.isArray(r.dias)&&r.dias.length===6&&r.dias.every(x=>who==="power"?okS(x.power):(okS(x.a)&&okS(x.b)));
+  if(!ok)throw {code:"formato"};
+  state.partDraft={who,dias:r.dias,weekId:state.week.id};
+  st.textContent=`Pronto. Só os treinos ${doDa(who)} mudam. Confira e confirme.`;
+  document.getElementById("prev").innerHTML=partPrevHTML(state.partDraft);
+ }catch(e){
+  if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return}
+  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
+ }finally{btn.disabled=false;stop.hidden=true;ctl=null}
+}
+function partPrevHTML(p){
+ const D=state.week.dias,po=p.who==="power";
+ return `<div class="panel" style="margin-top:16px"><h3>Novos treinos ${esc(doDa(p.who))}</h3><p class="sub">${esc(state.week.nome)}. Os treinos ${esc(doDa(po?"pace":"power"))} e todas as marcações continuam iguais.</p>
+ ${p.dias.map((x,i)=>{const antes=po?D[i].power.titulo:`${D[i].pace.a.titulo} / ${D[i].pace.b.titulo}`,depois=po?x.power.titulo:`${x.a.titulo} / ${x.b.titulo}`;
+  return `<div class="row"><b>${AB[i]}</b><span style="text-align:right"><span style="color:var(--muted);text-decoration:line-through">${esc(nm(antes))}</span><br><span style="color:var(--${p.who})">${esc(nm(depois))}</span></span></div>`}).join("")}
+ <div class="actions"><button class="btn" data-act="usar-parte">Usar estes treinos</button><button class="btn ghost" data-act="desc-parte">Descartar</button></div></div>`;
+}
+function usarParte(){
+ const p=state.partDraft;if(!p)return;
+ if(p.weekId!==state.week.id){state.partDraft=null;return}
+ p.dias.forEach((x,i)=>{const d=state.week.dias[i];if(p.who==="power")d.power=x.power;else{d.pace.a=x.a;d.pace.b=x.b}});
+ state.partDraft=null;savePlan();state.tab="dia";render();scrollTo(0,0);
+}
+
+/* Refazer com IA: um treino, um dia, um atleta */
+function redoBox(d,slot){
+ const r=state.redo;if(!r||r.d!==d||r.slot!==slot)return "";
+ const who=slot==="power"?"power":"pace";
+ if(r.draft){const s=r.draft;
+  return `<div class="redo-box ${who}"><p class="redo-t">Sugestão da IA</p><h4 class="redo-h">${esc(nm(s.titulo))}</h4>${descP(s)}
+  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span></div>${blocos(s,who==="pace")}
+  <div class="actions"><button class="btn sm" data-act="redo-use">Usar este treino</button><button class="btn sm ghost" data-act="redo-retry">Tentar de novo</button><button class="btn sm ghost" data-act="redo-cancel">Cancelar</button></div></div>`}
+ return `<div class="redo-box ${who}"><p class="redo-t">Refazer este treino com IA (${esc(quem(who))})</p>
+  <textarea id="redo-txt" rows="2" placeholder="O que mudar? Ex.: mais glúteo, sem agachamento, treino de 40 minutos">${esc(r.pedido||"")}</textarea>
+  <div class="actions"><button class="btn sm" data-act="redo-go" ${r.loading?"disabled":""}>${r.loading?"Gerando…":"Gerar sugestão"}</button><button class="btn sm ghost" data-act="redo-cancel">Cancelar</button></div>
+  ${r.err?`<p class="redo-err">${esc(r.err)}</p>`:""}</div>`;
+}
+async function redoGo(){
+ const r=state.redo;if(!r)return;const el=document.getElementById("redo-txt");r.pedido=el?el.value.trim():r.pedido;
+ const who=r.slot==="power"?"power":"pace",day=state.week.dias[r.d];
+ const atual=r.slot==="power"?day.power:day.pace[r.slot];
+ const ctx=who==="power"?{dia:DIAS[r.d],treino_do_pace_no_dia:day.pace.corrida?`corrida: ${day.pace.corrida.titulo}`:day.pace.a.titulo}
+  :{dia:DIAS[r.d],opcao:r.slot==="a"?"a (musculação)":"b (funcional)",corrida_fixa_do_dia:day.pace.corrida,outra_opcao:r.slot==="a"?day.pace.b.titulo:day.pace.a.titulo,treino_do_power_no_dia:day.power.titulo,vespera_de:r.d<5&&state.week.dias[r.d+1].pace.corrida?state.week.dias[r.d+1].pace.corrida.titulo:"nada especial"};
+ const prompt=`${promptBase(who)}
+
+Tarefa: refaça SOMENTE este treino do atleta "${who}". Não altere nada mais da semana.
+Contexto do dia: ${JSON.stringify(ctx)}
+Treino atual: ${JSON.stringify(atual)}
+Pedido do atleta: ${r.pedido||"variar mantendo o mesmo objetivo"}
+
+Responda APENAS com JSON: {"sessao":Sessao}. ${SESSAO_SPEC}. Português do Brasil; cite zonas como Z1, Z2 etc.`;
+ r.loading=true;r.err="";render();
+ try{const out=await geminiJson(prompt,null);if(!out||!okS(out.sessao))throw {code:"formato"};r.draft=out.sessao}
+ catch(e){r.err=({no_key:"A IA ainda não está ativa.",rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
+ finally{r.loading=false;if(state.redo===r)render()}
+}
+function redoUse(){
+ const r=state.redo;if(!r||!r.draft)return;const day=state.week.dias[r.d];
+ if(r.slot==="power")day.power=r.draft;else day.pace[r.slot]=r.draft;
+ state.redo=null;savePlan();render();
+}
+
 let ctl=null;
 async function gerar(){
+ if(state.genWho&&state.genWho!=="ambos")return gerarParte(state.genWho);
  const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
  const n=(parseInt((state.week.nome||"").replace(/\D/g,""))||1)+1;
  const runs=[...document.querySelectorAll("[data-run]")].map((t,i)=>t.value.trim()?`${DIAS[i]}: ${t.value.trim()}`:null).filter(Boolean);
@@ -1261,16 +1396,23 @@ async function importRes(file,who){
 
 /* Nova dieta da Joanna */
 async function importDieta(file){
+ const who=state.dietWho==="power"?"power":"pace";
  const id="upl-dieta";say(id,"Lendo a dieta com o Gemini. Pode levar alguns segundos…");
  try{const input=await readInput(file);
-  const r=await ask(`Este é um plano alimentar de nutricionista. Transcreva fielmente, sem inventar nada e sem mudar quantidades. Responda APENAS JSON: {"data":"data do plano como aparece ou vazio","kcal":número ou null,"refeicoes":[{"k":"identificador curto sem espaços (cafe, almoco, sobremesa, pre, jantar, ceia, lanche...)","h":"HH:MM","n":"nome da refeição","p":["itens da opção principal com quantidade"],"s":[["itens da substituição 1"],["itens da substituição 2"]],"obs":"observações da refeição ou vazio"}]}. Coloque receitas e observações de uma substituição como último item dela. Não inclua nome, e-mail ou dados pessoais. Use português do Brasil.`,input);
+  const r=await ask(`Este é um plano alimentar de nutricionista. Transcreva fielmente, sem inventar nada e sem mudar quantidades. Responda APENAS JSON: {"data":"data do plano como aparece ou vazio","kcal":número ou null,"titulo":"objetivo ou nome do plano, curto, ou vazio","resumo":"1 frase com objetivo e restrições do plano, ou vazio","macros":["metas do plano, ex.: Proteínas: 160 g; vazio se não houver"],"notas":"suplementação e orientações gerais, ou vazio","refeicoes":[{"k":"identificador curto sem espaços (cafe, almoco, sobremesa, pre, jantar, ceia, lanche...)","h":"HH:MM","n":"nome da refeição","p":["itens da opção principal com quantidade"],"s":[["itens da substituição 1"],["itens da substituição 2"]],"obs":"observações da refeição ou vazio"}]}. Coloque receitas e observações de uma substituição como último item dela. Não inclua nome, e-mail ou dados pessoais. Use português do Brasil.`,input);
   if(!r||!Array.isArray(r.refeicoes)||!r.refeicoes.length)throw {code:"vazio"};
   r.refeicoes.forEach((m,i)=>{m.k=strip_(m.k||m.n||"r"+i).replace(/[^a-z0-9]/g,"")||"r"+i;m.p=m.p||[];m.s=m.s||[]});
-  state.dietDraft=r;say(id,"");
-  document.getElementById("prev-dieta").innerHTML=`<div class="panel" style="margin-bottom:18px"><h3>Nova dieta${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
+  r.who=who;state.dietDraft=r;say(id,"");
+  document.getElementById("prev-dieta").innerHTML=`<div class="panel" style="margin-bottom:18px"><h3>Nova dieta do ${esc(who==="power"?NP():NA())}${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
    ${r.refeicoes.map(m=>`<div class="row"><span><b>${esc(m.h||"")}</b> ${esc(m.n)}</span><span>${m.p.length} itens, ${m.s.length} substituições</span></div>`).join("")}
    <div class="actions"><button class="btn" data-act="usar-dieta">Usar esta dieta</button><button class="btn ghost" data-act="desc-dieta">Descartar</button></div></div>`;
  }catch(e){say(id,ERR(e))}
+}
+const DIET_EWERTON_PADRAO=DIET_EWERTON;
+function applyDietPo(d){
+ if(!d||!Array.isArray(d.refeicoes)||!d.refeicoes.length)return;
+ DIET_EWERTON={titulo:d.titulo||"Plano alimentar",sub:d.resumo||(d.data?`Plano de ${d.data}.`:""),macros:Array.isArray(d.macros)?d.macros.filter(Boolean):[],
+  alternancia:Array.isArray(d.alternancia)?d.alternancia:[],refeicoes:d.refeicoes,notas:d.notas||"",kcal:d.kcal||null,data:d.data||""};
 }
 function applyDiet(d){if(!d||!Array.isArray(d.refeicoes)||!d.refeicoes.length)return;MEALS_JOANNA=d.refeicoes;state.diet={data:d.data||"",kcal:d.kcal||null}}
 
@@ -1335,12 +1477,20 @@ document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.cl
 const view=document.getElementById("view");
 view.addEventListener("click",e=>{
  const t=e.target.closest("button,tr[data-go]");if(!t)return;
- if(t.dataset.dia!==undefined){state.dia=+t.dataset.dia;state.editing=null;render();return}
+ if(t.dataset.dia!==undefined){state.dia=+t.dataset.dia;state.editing=null;state.redo=null;render();return}
  if(t.dataset.dietDia!==undefined){state.dia=+t.dataset.dietDia;render();return}
- if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;render();return}
+ if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;state.dietDraft=null;render();return}
  if(t.dataset.go!==undefined){state.dia=+t.dataset.go;state.editing=null;state.tab="dia";render();scrollTo(0,0);return}
  if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
+ if(t.dataset.genWho!==undefined){const a=document.getElementById("ajustes");if(a)state.ajustesTxt=a.value;state.genWho=t.dataset.genWho;render();return}
  const act=t.dataset.act;
+ if(act==="redo-card"){state.editing=null;state.redo={d:+t.dataset.d,slot:t.dataset.slot,pedido:"",draft:null,loading:false,err:""};render();return}
+ if(act==="redo-go")return redoGo();
+ if(act==="redo-use")return redoUse();
+ if(act==="redo-retry"){if(state.redo){state.redo.draft=null;render()}return}
+ if(act==="redo-cancel"){state.redo=null;render();return}
+ if(act==="usar-parte")return usarParte();
+ if(act==="desc-parte"){state.partDraft=null;render();return}
  if(act==="diet-st"){
   const who=state.dietWho==="pace"?"pace":"power";
   const k=`${state.dia}:${who}`;
@@ -1374,7 +1524,7 @@ view.addEventListener("click",e=>{
   }catch(err){if(st)st.textContent="Formato inválido. Cole o bloco JSON completo da semana."}
   return;
  }
- if(act==="edit-card"){state.editing={dia:+t.dataset.d,slot:t.dataset.slot};render();return}
+ if(act==="edit-card"){state.redo=null;state.editing={dia:+t.dataset.d,slot:t.dataset.slot};render();return}
  if(act==="cancel-edit"){state.editing=null;render();return}
  if(act==="save-edit"){
   const box=t.closest(".edit-form"),d=+box.dataset.editDia,slot=box.dataset.editSlot;
@@ -1396,7 +1546,10 @@ view.addEventListener("click",e=>{
   }
   state.editing=null;render();return;
  }
- if(act==="usar-dieta"){applyDiet(state.dietDraft);save("dieta/v2",{data:state.diet.data,kcal:state.diet.kcal,refeicoes:MEALS_JOANNA});state.dietDraft=null;render();return}
+ if(act==="usar-dieta"){const d=state.dietDraft;if(!d)return;
+  if(d.who==="power"){const doc={data:d.data||"",kcal:d.kcal||null,titulo:d.titulo||"",resumo:d.resumo||"",macros:d.macros||[],notas:d.notas||"",refeicoes:d.refeicoes};applyDietPo(doc);save("dieta-ewerton/v2",doc)}
+  else{applyDiet(d);save("dieta/v2",{data:state.diet.data,kcal:state.diet.kcal,refeicoes:MEALS_JOANNA})}
+  state.dietDraft=null;render();return}
  if(act==="desc-dieta"){state.dietDraft=null;document.getElementById("prev-dieta").innerHTML="";return}
  if(act==="aplicar"){const card=t.closest(".apply");aplicar(t.dataset.id,+card.querySelector('[data-role="dia"]').value,card.querySelector('[data-role="slot"]').value);return}
  if(act==="del-lib")return delLib(t.dataset.id);
@@ -1460,6 +1613,7 @@ async function initCloud(){
  const hc=await load(P_CFG);if(hc)applyCfg(hc);
  const hrr=await load(pRes());if(hrr)state.res={pace:hrr.pace||{},power:hrr.power||{}};
  applyDiet(await load("dieta/v2"));
+ applyDietPo(await load("dieta-ewerton/v2"));
 
  try{
   const items=await window.fb.listLib();
@@ -1480,6 +1634,7 @@ async function initCloud(){
  window.fb.watch(P_CFG,(c)=>{applyCfg(c);lsSet(P_CFG,state.cfg);render()});
  window.fb.watch(P_WEEKS,(wl)=>{if(wl&&Array.isArray(wl.list)){state.weeks=wl.list;render()}});
  window.fb.watch("dieta/v2",(d)=>{applyDiet(d);lsSet("dieta/v2",d);render()});
+ window.fb.watch("dieta-ewerton/v2",(d)=>{applyDietPo(d);lsSet("dieta-ewerton/v2",d);render()});
  bindWeekWatchers();
  render();
 }
@@ -1488,10 +1643,11 @@ async function initCloud(){
  const w=lsGet(P_PLAN);if(valid(w)){state.week=w;state.currentId=w.id}
  applyLog(lsGet(pLog()));applyCfg(lsGet(P_CFG));
  const lr=lsGet(pRes());if(lr)state.res={pace:lr.pace||{},power:lr.power||{}};
- applyDiet(lsGet("dieta/v2"));state.lib=lsGet("biblioteca")||[];
+ applyDiet(lsGet("dieta/v2"));applyDietPo(lsGet("dieta-ewerton/v2"));state.lib=lsGet("biblioteca")||[];
  state.weeks=[{id:state.week.id,nome:state.week.nome}];
  state.dia=Math.max(0,todayIdx());render();
  initCloud();
+ fetch("/api/gemini").then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok){state.aiServer=true;render()}}).catch(()=>{});
 })();
 </script>
 </body>
