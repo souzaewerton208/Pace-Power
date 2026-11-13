@@ -31,29 +31,35 @@ module.exports = async (req, res) => {
   if (origin && !origin.includes(host)) return res.status(403).json({ error: "Origem não permitida" });
 
   const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-  // Modelo pode ser trocado na Vercel pela variável GEMINI_MODEL, sem mexer no código
-  // Para testes, ?modelo=<nome> escolhe outro modelo do Gemini e ?semRepetir=1 desliga as novas tentativas
-  const pedido = typeof q.modelo === "string" && /^gemini-[\w.-]+$/.test(q.modelo) ? q.modelo : "";
-  const MODEL = pedido || process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-  // Quando o Google está sobrecarregado (503/500/429) ou a conexão cai, tenta de novo sozinho,
-  // com pausas crescentes. Não começa nova tentativa depois de 150 s, para caber no limite da Vercel.
-  const PAUSAS = q.semRepetir ? [] : [2000, 5000, 10000];
+  // Modelo principal e reservas, em ordem. Na Vercel, a variável GEMINI_MODEL pode trocar a lista
+  // sem mexer no código (nomes separados por vírgula, ex.: "gemini-3.6-flash,gemini-3.5-flash").
+  const MODELOS = (process.env.GEMINI_MODEL || "gemini-3.6-flash,gemini-3.5-flash,gemini-3.1-flash-lite")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+
+  // Se um modelo estiver sobrecarregado (500/503), sem cota (429) ou a conexão cair, passa na hora
+  // para o próximo da lista. Depois da lista toda, dá mais uma volta após 5 s.
+  // Não começa nova tentativa depois de 150 s, para caber no limite da Vercel.
+  const RETENTAR = [429, 500, 502, 503, 504];
   const inicio = Date.now();
   let status = 502, text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
-  for (let i = 0; ; i++) {
-    try {
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body });
-      status = r.status;
-      text = await r.text();
-      if (![429, 500, 503].includes(status)) break;
-    } catch (e) {
-      status = 502;
-      text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
+  fora: for (let volta = 0; volta < 2; volta++) {
+    if (volta > 0) await new Promise((ok) => setTimeout(ok, 5000));
+    for (const modelo of MODELOS) {
+      if (Date.now() - inicio > 150000) break fora;
+      try {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
+          { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body }
+        );
+        status = r.status;
+        text = await r.text();
+        if (!RETENTAR.includes(status)) break fora;
+      } catch (e) {
+        status = 502;
+        text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
+      }
     }
-    if (i >= PAUSAS.length || Date.now() - inicio > 150000) break;
-    await new Promise((ok) => setTimeout(ok, PAUSAS[i]));
   }
   res.status(status).setHeader("Content-Type", "application/json");
   res.send(text);
