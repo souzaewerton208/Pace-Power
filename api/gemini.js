@@ -13,18 +13,29 @@ module.exports = async (req, res) => {
   const origin = req.headers.origin || req.headers.referer || "";
   if (origin && !origin.includes(host)) return res.status(403).json({ error: "Origem não permitida" });
 
-  try {
-    const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-    // Modelo pode ser trocado na Vercel pela variável GEMINI_MODEL, sem mexer no código
-    const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body }
-    );
-    const text = await r.text();
-    res.status(r.status).setHeader("Content-Type", "application/json");
-    res.send(text);
-  } catch (e) {
-    res.status(502).json({ error: "Falha ao falar com o Gemini" });
+  const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  // Modelo pode ser trocado na Vercel pela variável GEMINI_MODEL, sem mexer no código
+  const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+  // Quando o Google está sobrecarregado (503/500/429) ou a conexão cai, tenta de novo sozinho,
+  // com pausas crescentes. Não começa nova tentativa depois de 150 s, para caber no limite da Vercel.
+  const PAUSAS = [2000, 5000, 10000];
+  const inicio = Date.now();
+  let status = 502, text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
+  for (let i = 0; ; i++) {
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body });
+      status = r.status;
+      text = await r.text();
+      if (![429, 500, 503].includes(status)) break;
+    } catch (e) {
+      status = 502;
+      text = JSON.stringify({ error: "Falha ao falar com o Gemini" });
+    }
+    if (i >= PAUSAS.length || Date.now() - inicio > 150000) break;
+    await new Promise((ok) => setTimeout(ok, PAUSAS[i]));
   }
+  res.status(status).setHeader("Content-Type", "application/json");
+  res.send(text);
 };

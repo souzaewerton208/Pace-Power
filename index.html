@@ -1080,6 +1080,7 @@ async function shrinkImage(blob){
   return await new Promise(r=>c.toBlob(b=>r(b||blob),"image/jpeg",.82));
  }catch(e){return blob}
 }
+const IA_CHEIA="A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos.";
 async function geminiJson(prompt,images,signal){
  const apiKey=getApiKey();
  if(!apiKey&&!state.aiServer) throw {code:"no_key"};
@@ -1098,12 +1099,13 @@ async function geminiJson(prompt,images,signal){
  if(!res.ok){
   if(res.status===400||res.status===403) throw {code:"bad_key"};
   if(res.status===429) throw {code:"rate_limited"};
+  if(res.status>=500) throw {code:"overloaded"};
   throw {code:"api_err"};
  }
  const data=await res.json();
  const raw=data?.candidates?.[0]?.content?.parts?.[0]?.text||"";
  const clean=raw.replace(/^```json\s*/i,"").replace(/```\s*$/,"").trim();
- return JSON.parse(clean);
+ try{return JSON.parse(clean)}catch(e){throw {code:"formato"}}
 }
 
 /* Geração de próxima semana */
@@ -1149,7 +1151,7 @@ Semana atual (JSON):
 ${JSON.stringify(contextoParte(who))}
 
 Responda APENAS com JSON: {"dias":[6 itens, segunda a sábado]}, cada item no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
- btn.disabled=true;stop.hidden=false;st.textContent=`Refazendo os treinos ${doDa(who)}. Pode levar até 30 segundos…`;ctl=new AbortController();
+ btn.disabled=true;stop.hidden=false;st.textContent=`Refazendo os treinos ${doDa(who)}. Pode levar um ou dois minutos…`;ctl=new AbortController();
  try{
   const r=await geminiJson(prompt,null,ctl.signal);
   const ok=r&&Array.isArray(r.dias)&&r.dias.length===6&&r.dias.every(x=>who==="power"?okS(x.power):(okS(x.a)&&okS(x.b)));
@@ -1159,7 +1161,7 @@ Responda APENAS com JSON: {"dias":[6 itens, segunda a sábado]}, cada item no fo
   document.getElementById("prev").innerHTML=partPrevHTML(state.partDraft);
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return}
-  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
+  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",overloaded:IA_CHEIA,formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
  }finally{btn.disabled=false;stop.hidden=true;ctl=null}
 }
 function partPrevHTML(p){
@@ -1205,7 +1207,7 @@ Pedido do atleta: ${r.pedido||"variar mantendo o mesmo objetivo"}
 Responda APENAS com JSON: {"sessao":Sessao}. ${SESSAO_SPEC}. Português do Brasil; cite zonas como Z1, Z2 etc.`;
  r.loading=true;r.err="";render();
  try{const out=await geminiJson(prompt,null);if(!out||!okS(out.sessao))throw {code:"formato"};r.draft=out.sessao}
- catch(e){r.err=({no_key:"A IA ainda não está ativa.",rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
+ catch(e){r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
  finally{r.loading=false;if(state.redo===r)render()}
 }
 function redoUse(){
@@ -1240,7 +1242,7 @@ ${libForPrompt()}
 Ajustes pedidos: ${document.getElementById("ajustes").value.trim()||"nenhum"}
 
 Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Semana ${n}","fase":"...","foco":"...","dias":[6 itens, segunda a sábado]}. Cada dia: {"nota":"texto curto ou vazio","power":Sessao,"pace":{"corrida":Corrida ou null,"a":Sessao,"b":Sessao}}. Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número,"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado"}]}],"nota"}. Corrida: {"titulo","desc":"1 frase sobre o objetivo","km":número,"min":número estimado,"rpe":1-10,"zonas":[5 números de minutos],"passos":[textos curtos com a zona, sem paces],"obs"}. Todo exercício de musculação, funcional ou estação deve ter "d". Transcreva as corridas da planilha fielmente nos passos. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
- btn.disabled=true;stop.hidden=false;st.textContent="Montando a semana com o Gemini. Pode levar até 30 segundos…";ctl=new AbortController();
+ btn.disabled=true;stop.hidden=false;st.textContent="Montando a semana com o Gemini. Pode levar um ou dois minutos…";ctl=new AbortController();
  try{
   const w=await geminiJson(prompt,null,ctl.signal);
   if(!valid(w)) throw {code:"formato"};
@@ -1252,6 +1254,7 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
    no_key:"Cole sua chave gratuita do Google AI Studio acima (ou em Painel > Ajustes) para gerar treinos automaticamente.",
    bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
    rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
+   overloaded:IA_CHEIA,
    formato:"A resposta veio num formato inesperado. Tente gerar de novo."
   };
   st.textContent=m[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
@@ -1361,6 +1364,8 @@ const ERR=e=>({
  no_key:"Para ler PDFs ou imagens com IA, salve sua chave gratuita do Google AI Studio em Painel > Ajustes. (Planilhas CSV do Garmin funcionam sem chave!)",
  bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
  rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
+ overloaded:IA_CHEIA,
+ formato:"A resposta da IA veio num formato inesperado. Tente de novo.",
  script:"Não foi possível abrir este tipo de arquivo agora. Tente em CSV, TXT ou PDF.",
  vazio:"Não encontrei nada para importar neste arquivo."
 }[e&&e.code]||"Não foi possível ler o arquivo. Confira o formato e tente de novo.");
