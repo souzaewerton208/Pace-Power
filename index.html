@@ -1344,7 +1344,7 @@ async function pdfInput(file){
  const base="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
  await loadScript(base+"pdf.min.js");window.pdfjsLib.GlobalWorkerOptions.workerSrc=base+"pdf.worker.min.js";
  const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;let text="";
- for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const tc=await pg.getPage(i).then(p=>p.getTextContent());text+=tc.items.map(x=>x.str+(x.hasEOL?"\n":" ")).join("")+"\n"}
+ for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();text+=tc.items.map(x=>x.str+(x.hasEOL?"\n":" ")).join("")+"\n"}
  if(text.replace(/\s/g,"").length>150)return {text};
  const images=[];for(let i=1;i<=Math.min(pdf.numPages,4);i++){const pg=await pdf.getPage(i);const vp=pg.getViewport({scale:1.6});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;images.push(await new Promise(r=>c.toBlob(r,"image/jpeg",.85)))}
  return {images};
@@ -1352,7 +1352,7 @@ async function pdfInput(file){
 async function readInput(file){
  const n=file.name.toLowerCase();
  if(file.type.startsWith("image/")) return {images:[file]};
- if(n.endsWith(".pdf")) return pdfInput(file);
+ if(n.endsWith(".pdf")||file.type==="application/pdf") return pdfInput(file);
  if(n.endsWith(".docx")){await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");const r=await window.mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});return {text:r.value}}
  return {text:await file.text()};
 }
