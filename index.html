@@ -118,6 +118,16 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .chk input{accent-color:var(--ok);width:16px;height:16px;margin:0}
 .chk label:has(input:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
 .chk .sub{width:100%;font-size:.8rem;color:var(--muted);margin-top:8px}
+.agua{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:9px 12px;margin-top:2px}
+.agua.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,var(--surface))}
+.agua-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem}
+.agua-st{font-weight:700;color:var(--muted)} .agua.ok .agua-st{color:var(--ok)}
+.agua-bar{height:6px;border-radius:3px;background:var(--line-2);margin:7px 0 5px;overflow:hidden}
+.agua-bar i{display:block;height:100%;background:#2F80C9;border-radius:3px} .agua.ok .agua-bar i{background:var(--ok)}
+.agua-info{font-size:.76rem;color:var(--muted);margin:0 0 7px}
+.agua-btns{display:flex;flex-wrap:wrap;gap:6px}
+.agua-btns button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;font-size:.82rem;font-weight:650;color:var(--ink);cursor:pointer}
+.agua-btns button:disabled{opacity:.45;cursor:default}
 
 h2.sec{font-stretch:68%;font-weight:900;font-size:clamp(2.2rem,6vw,3.2rem);line-height:.95;margin:0 0 8px;letter-spacing:-.01em}
 p.lead{color:var(--muted);margin:0 0 20px;max-width:68ch}
@@ -642,7 +652,7 @@ const state={
  week:DEFAULT_WEEK,
  weeks:[],
  log:{chk:{},opt:{},dietStatus:{},dietObs:{}},
- cfg:{paces:["7:15–6:33","6:28–6:15","6:11–5:51","","5:26–5:02"],nomes:{power:"Ewerton",pace:"Joanna"},prova:"",geminiKey:""},
+ cfg:{paces:["7:15–6:33","6:28–6:15","6:11–5:51","","5:26–5:02"],nomes:{power:"Ewerton",pace:"Joanna"},pesos:{power:78,pace:66},prova:"",geminiKey:""},
  dia:0,
  tab:"dia",
  connected:false,
@@ -768,6 +778,33 @@ const descP=s=>s.desc?`<p class="desc">${esc(nm(s.desc))}</p>`:"";
 function blocos(s,pace){return (s.blocos||[]).map(b=>`<div class="bl"><h4>${esc(nm(b.nome))}</h4><ul>${(b.itens||[]).map(i=>item(i,pace)).join("")}</ul></div>`).join("")}
 const ck=(k,l)=>`<label><input type="checkbox" data-k="${k}" ${isC(k)?"checked":""}>${l}</label>`;
 
+/* Água: meta diária = 35 ml por kg de peso + 500 ml por hora de treino planejado no dia */
+const ML_KG=35, ML_HORA=500;
+const pesoDe=who=>+((state.cfg.pesos||{})[who])||0;
+function treinoMin(who,d){const day=state.week.dias[d];if(!day)return 0;
+ if(who==="power")return +day.power.min||0;
+ const o=day.pace[opt(d)]||day.pace.a;return (+o.min||0)+(day.pace.corrida?(+day.pace.corrida.min||0):0)}
+const metaBase=who=>Math.round(pesoDe(who)*ML_KG/100)*100;
+function metaAgua(who,d){const kg=pesoDe(who);if(!kg)return 0;return Math.round((kg*ML_KG+treinoMin(who,d)*ML_HORA/60)/100)*100}
+const litros=ml=>num(+(ml/1000).toFixed(2))+" L";
+const falta=ml=>ml<1000?`${Math.round(ml)} ml`:litros(ml);
+function aguaHTML(who,d){
+ const k=`${d}:${who}`,meta=metaAgua(who,d);
+ if(!meta)return ck(`${k}:agua`,"Água: meta batida");
+ const ml=+((state.log.agua||{})[k])||0,ok=ml>=meta,pct=Math.min(100,Math.round(ml/meta*100)),tm=treinoMin(who,d);
+ return `<div class="agua${ok?" ok":""}" role="group" aria-label="Água bebida hoje">
+  <div class="agua-top"><span>Água: <b>${litros(ml)}</b> de ${litros(meta)}</span><span class="agua-st">${ok?"Meta batida ✓":`faltam ${falta(meta-ml)}`}</span></div>
+  <div class="agua-bar"><i style="width:${pct}%"></i></div>
+  <p class="agua-info">Meta do dia: ${pesoDe(who)} kg × 35 ml${tm?` + ${tm} min de treino (500 ml por hora)`:""}</p>
+  <div class="agua-btns"><button data-agua="${k}" data-ml="250">+250 ml</button><button data-agua="${k}" data-ml="500">+500 ml</button><button data-agua="${k}" data-ml="-250" ${ml?"":"disabled"}>−250 ml</button></div></div>`;
+}
+function addAgua(k,delta){
+ state.log.agua=state.log.agua||{};
+ const ml=Math.max(0,(+state.log.agua[k]||0)+delta),[d,who]=k.split(":"),ok=ml>=metaAgua(who,+d);
+ state.log.agua[k]=ml;state.log.chk[k+":agua"]=ok;
+ saveLog({agua:{[k]:ml},chk:{[k+":agua"]:ok}});render();
+}
+
 function editFormHTML(s,d,slot,isRun){
  const lines=isRun?(s.passos||[]).join("\n"):(s.blocos||[]).flatMap(b=>[`# ${b.nome}`,...(b.itens||[]).map(i=>typeof i==="string"?i:i.t)]).join("\n");
  return `<div class="edit-form" data-edit-slot="${slot}" data-edit-dia="${d}">
@@ -786,7 +823,7 @@ function powerCard(s,d){
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}</div>
   ${blocos(s,false)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
-   ${ck(d+":power:treino","Treino feito")+ck(d+":power:agua","Água: meta batida")+ck(d+":power:sono","Dormiu 7h ou mais")}
+   ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${aguaHTML("power",d)}
    <div class="sub">Plano alimentar (${esc(NP())})</div>${DIET_EWERTON.refeicoes.map(m=>ck(`${d}:power:${m.k}`,`${m.h} ${m.n}`)).join("")}
   </div></div></article>`;
 }
@@ -810,7 +847,7 @@ function optCard(p,d){
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span></div>
   ${blocos(s,true)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
-   ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:agua","Água: meta batida")+ck(d+":pace:sono","Dormiu 7h ou mais")}
+   ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${aguaHTML("pace",d)}
    <div class="sub">Plano alimentar (${esc(NA())})</div>${MEALS_JOANNA.map(m=>ck(`${d}:pace:${m.k}`,`${m.h} ${m.n}`)).join("")}</div></div></article>`;
 }
 
@@ -885,7 +922,8 @@ function vPainel(v){
    <div class="row"><span>Treinos do ${esc(NP())}</span><b>${cnt("power","treino")} de 6</b></div>
    <div class="row"><span>Corridas da ${esc(NA())}</span><b>${runsDone} de ${runs}</b></div>
    <div class="row"><span>Musculação ou funcional da ${esc(NA())}</span><b>${cnt("pace","treino")} de 6</b></div>
-   <div class="row"><span>Água (${esc(NP())} / ${esc(NA())})</span><b>${cnt("power","agua")} / ${cnt("pace","agua")} dias</b></div>
+   <div class="row"><span>Água: meta batida (${esc(NP())} / ${esc(NA())})</span><b>${cnt("power","agua")} / ${cnt("pace","agua")} dias</b></div>
+   <div class="row"><span>Meta base de água, sem treino (${esc(NP())} / ${esc(NA())})</span><b>${litros(metaBase("power"))} / ${litros(metaBase("pace"))}</b></div>
    <div class="row"><span>Sono de 7h ou mais</span><b>${cnt("power","sono")} / ${cnt("pace","sono")} dias</b></div>
    <div class="row"><span>Refeições ${esc(NP())}</span><b>${mealsPo} de ${mtPo} (${Math.round(mealsPo/mtPo*100)}%)</b></div>
    <div class="row"><span>Refeições ${esc(NA())}</span><b>${mealsPa} de ${mtPa} (${Math.round(mealsPa/mtPa*100)}%)</b></div></div>
@@ -894,6 +932,8 @@ function vPainel(v){
    <div class="form">${ZN.map((z,i)=>`<label>Pace ${z}<input data-cfg="pace" data-i="${i}" placeholder="ex.: 6:28–6:15" value="${esc(c.paces[i])}"></label>`).join("")}
     <label>Nome de quem treina Hyrox<input data-cfg="np" value="${esc(c.nomes.power)}" maxlength="20"></label>
     <label>Nome de quem treina corrida<input data-cfg="na" value="${esc(c.nomes.pace)}" maxlength="20"></label>
+    <label>Peso de ${esc(c.nomes.power)} (kg, para a meta de água)<input type="number" inputmode="decimal" min="30" max="200" data-cfg="peso-power" value="${esc(pesoDe("power")||"")}"></label>
+    <label>Peso de ${esc(c.nomes.pace)} (kg, para a meta de água)<input type="number" inputmode="decimal" min="30" max="200" data-cfg="peso-pace" value="${esc(pesoDe("pace")||"")}"></label>
     <label>Data do Hyrox Fortaleza 2027<input type="date" data-cfg="prova" value="${esc(c.prova)}"></label>
     <label>Chave do Gemini neste aparelho (opcional${state.aiServer?": a IA já está ativa pelo servidor":""})<input type="password" data-cfg="apikey" placeholder="${state.aiServer?"Não precisa preencher":"Cole a chave do AI Studio"}" value="${esc(getApiKey())}"></label></div></div>
  </div>`;
@@ -1070,10 +1110,12 @@ function blobToBase64(blob){
   r.readAsDataURL(blob);
  });
 }
-/* reduz fotos grandes (até 1600 px, JPEG) para caber no envio pela Vercel */
-async function shrinkImage(blob){
+/* reduz fotos grandes (JPEG) para caber no envio pela Vercel. Limita pelo total de pixels,
+   não só pelo lado maior, para prints compridos de tela continuarem legíveis */
+async function shrinkImage(blob,maxPx=2400000){
  try{
-  const bmp=await createImageBitmap(blob);const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+  const bmp=await createImageBitmap(blob);
+  const k=Math.min(1,Math.sqrt(maxPx/(bmp.width*bmp.height)),4096/Math.max(bmp.width,bmp.height));
   if(k===1&&blob.size<1500000)return blob;
   const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
   c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
@@ -1087,12 +1129,14 @@ async function geminiJson(prompt,images,signal){
  const parts=[{text:prompt}];
  if(images&&images.length){
   for(let img of images){
-   if(!apiKey)img=await shrinkImage(img);
+   /* vários prints dividem o limite de envio da Vercel (4,5 MB) */
+   if(!apiKey)img=await shrinkImage(img,Math.min(2400000,5000000/images.length));
    const b64=await blobToBase64(img);
    parts.push({inlineData:{mimeType:img.type||"image/jpeg",data:b64}});
   }
  }
  const payload=JSON.stringify({contents:[{parts}],generationConfig:{responseMimeType:"application/json"}});
+ if(!apiKey&&payload.length>4300000) throw {code:"grande"};
  /* sem chave no aparelho, usa a chave guardada com segurança na Vercel (/api/gemini) */
  const url=apiKey?`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`:"/api/gemini";
  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:payload,signal});
@@ -1367,21 +1411,30 @@ const ERR=e=>({
  overloaded:IA_CHEIA,
  formato:"A resposta da IA veio num formato inesperado. Tente de novo.",
  script:"Não foi possível abrir este tipo de arquivo agora. Tente em CSV, TXT ou PDF.",
- vazio:"Não encontrei nada para importar neste arquivo."
+ vazio:"Não encontrei nada para importar neste arquivo.",
+ grande:"Os arquivos ficaram grandes demais para enviar de uma vez. Tente com menos prints por vez."
 }[e&&e.code]||"Não foi possível ler o arquivo. Confira o formato e tente de novo.");
 
-function pick(kind,accept,who){const f=document.getElementById("fileIn");f.value="";f.accept=accept;f.dataset.kind=kind;f.dataset.who=who||"";f.click()}
+function pick(kind,accept,who,multi){const f=document.getElementById("fileIn");f.value="";f.accept=accept;f.multiple=!!multi;f.dataset.kind=kind;f.dataset.who=who||"";f.click()}
 const say=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t};
 
 /* Importar resultados */
 async function importRes(file,who){
- const id="upl-res";say(id,"Lendo o arquivo…");
+ const id="upl-res";
+ /* vários arquivos de uma vez: só fotos ou prints, até 6, enviados juntos para a IA */
+ if(Array.isArray(file)){
+  const imgs=file.filter(x=>(x.type||"").startsWith("image/"));
+  if(imgs.length!==file.length){say(id,"Para enviar vários arquivos de uma vez, use só fotos ou prints. PDF e CSV vão um por vez.");return}
+  if(imgs.length>6){say(id,"Escolha no máximo 6 prints por vez.");return}
+  file={name:imgs.map(x=>x.name).join(" "),multi:imgs};
+ }
+ say(id,file.multi?`Lendo ${file.multi.length} prints…`:"Lendo o arquivo…");
  try{
   let list=null,fonte=/garmin/i.test(file.name)?"Garmin":"";
   if(/\.(csv|txt|tsv)$/i.test(file.name)){const t=await file.text();list=heuristic(t);if(list&&!fonte&&/activity type|tipo de atividade/i.test(t.slice(0,400)))fonte="Garmin"}
   if(!list||!list.length){say(id,"Organizando as atividades com o Gemini…");
-   const input=await readInput(file);
-   const r=await ask(`Extraia as atividades físicas deste conteúdo (exportação ou print de relógio, Garmin, Strava, planilha de treino etc.). Responda APENAS JSON: {"fonte":"nome do app se identificável","atividades":[{"data":"AAAA-MM-DD","tipo":"corrida, musculação, bike...","titulo":"","km":número,"tempo":"h:mm:ss ou mm:ss","pace":"m:ss por km ou vazio","fc":"FC média ou vazio","run":true se for corrida}]}. Se o ano não aparecer, use ${new Date().getFullYear()}. Ignore atividades planejadas que não foram realizadas.`,input);
+   const input=file.multi?{images:file.multi}:await readInput(file);
+   const r=await ask(`Extraia as atividades físicas deste conteúdo (exportação ou print de relógio, Garmin, Strava, planilha de treino etc.).${input.images&&input.images.length>1?" São vários prints: se mais de um mostrar a mesma atividade (mesma data e distância), junte as informações numa só, sem duplicar.":""} Responda APENAS JSON: {"fonte":"nome do app se identificável","atividades":[{"data":"AAAA-MM-DD","tipo":"corrida, musculação, bike...","titulo":"","km":número,"tempo":"h:mm:ss ou mm:ss","pace":"m:ss por km ou vazio","fc":"FC média ou vazio","run":true se for corrida}]}. Se o ano não aparecer, use ${new Date().getFullYear()}. Ignore atividades planejadas que não foram realizadas.`,input);
    list=(r&&r.atividades||[]).map(a=>({...a,data:isoDate(a.data),km:+a.km||0,run:a.run===true||RUN.test((a.tipo||"")+" "+(a.titulo||""))})).filter(a=>a.data);fonte=fonte||(r&&r.fonte)||"";}
   if(!list.length)throw {code:"vazio"};
   const byWeek={};list.forEach(a=>{a.fonte=fonte||"importado";(byWeek[mondayOf(a.data)]=byWeek[mondayOf(a.data)]||[]).push(a)});
@@ -1488,6 +1541,7 @@ view.addEventListener("click",e=>{
  if(t.dataset.dietDia!==undefined){state.dia=+t.dataset.dietDia;render();return}
  if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;state.dietDraft=null;render();return}
  if(t.dataset.go!==undefined){state.dia=+t.dataset.go;state.editing=null;state.tab="dia";render();scrollTo(0,0);return}
+ if(t.dataset.agua){addAgua(t.dataset.agua,+t.dataset.ml||0);return}
  if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
  if(t.dataset.genWho!==undefined){const a=document.getElementById("ajustes");if(a)state.ajustesTxt=a.value;state.genWho=t.dataset.genWho;render();return}
  const act=t.dataset.act;
@@ -1516,7 +1570,7 @@ view.addEventListener("click",e=>{
   saveLog({dietObs:{[k]:state.log.dietObs[k]}});render();return;
  }
  if(act==="hist-reload"){state.hist=null;render();return}
- if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace");
+ if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace",true);
  if(act==="imp-dieta")return pick("dieta",".pdf,.docx,.txt,image/*");
  if(act==="imp-lib")return pick("lib",".txt,.md,.pdf,.docx,.csv,image/*");
  if(act==="imp-runsheet")return pick("runsheet",".pdf,.txt,.csv,image/*");
@@ -1573,21 +1627,22 @@ view.addEventListener("change",e=>{
  if(c==="np")state.cfg.nomes.power=val||"Ewerton";
  if(c==="na")state.cfg.nomes.pace=val||"Joanna";
  if(c==="prova")state.cfg.prova=val;
+ if(c==="peso-power"||c==="peso-pace"){const kg=parseFloat(val.replace(",","."));state.cfg.pesos={...(state.cfg.pesos||{}),[c.slice(5)]:kg>=30&&kg<=200?kg:0}}
  if(c==="apikey"){state.cfg.geminiKey=val;if(val)localStorage.setItem("gemini_api_key",val);else localStorage.removeItem("gemini_api_key");}
  save(P_CFG,state.cfg);render();
 });
 document.getElementById("wk").addEventListener("change",e=>{if(e.target.id==="wk-switch")switchWeek(e.target.value)});
 
 document.getElementById("fileIn").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;const k=e.target.dataset.kind;
- if(k==="res")importRes(f,e.target.dataset.who||"pace");
+ if(k==="res")importRes(e.target.files.length>1?[...e.target.files]:f,e.target.dataset.who||"pace");
  if(k==="dieta")importDieta(f);
  if(k==="runsheet")importRunSheet(f);
  if(k==="lib"){say("upl-lib","Lendo o arquivo…");try{importLib(await readInput(f),f.name)}catch(err){say("upl-lib",ERR(err))}}
 });
 
 /* Inicialização e Observadores em Tempo Real */
-function applyCfg(c){if(!c)return;if(Array.isArray(c.paces))state.cfg.paces=c.paces;if(c.nomes)state.cfg.nomes={...state.cfg.nomes,...c.nomes};if(typeof c.prova==="string")state.cfg.prova=c.prova;if(typeof c.geminiKey==="string"&&c.geminiKey){state.cfg.geminiKey=c.geminiKey;localStorage.setItem("gemini_api_key",c.geminiKey)}}
-function applyLog(l){state.log=l&&l.chk?{chk:l.chk,opt:l.opt||{},dietStatus:l.dietStatus||{},dietObs:l.dietObs||{}}:{chk:{},opt:{},dietStatus:{},dietObs:{}}}
+function applyCfg(c){if(!c)return;if(Array.isArray(c.paces))state.cfg.paces=c.paces;if(c.nomes)state.cfg.nomes={...state.cfg.nomes,...c.nomes};if(c.pesos)state.cfg.pesos={...state.cfg.pesos,...c.pesos};if(typeof c.prova==="string")state.cfg.prova=c.prova;if(typeof c.geminiKey==="string"&&c.geminiKey){state.cfg.geminiKey=c.geminiKey;localStorage.setItem("gemini_api_key",c.geminiKey)}}
+function applyLog(l){state.log=l&&(l.chk||l.agua)?{chk:l.chk||{},opt:l.opt||{},dietStatus:l.dietStatus||{},dietObs:l.dietObs||{},agua:l.agua||{}}:{chk:{},opt:{},dietStatus:{},dietObs:{},agua:{}}}
 
 let unsubWeek=[];
 function bindWeekWatchers(){
