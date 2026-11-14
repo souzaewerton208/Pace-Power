@@ -118,6 +118,8 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .chk input{accent-color:var(--ok);width:16px;height:16px;margin:0}
 .chk label:has(input:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
 .chk .sub{width:100%;font-size:.8rem;color:var(--muted);margin-top:8px}
+.who-tag{display:inline-block;font-size:.74rem;font-weight:700;border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
+.who-tag.power{color:var(--power);background:var(--power-soft)} .who-tag.pace{color:var(--pace);background:var(--pace-soft)}
 .agua{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:9px 12px;margin-top:2px}
 .agua.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,var(--surface))}
 .agua-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem}
@@ -913,7 +915,7 @@ function vPainel(v){
  <div class="upl" id="upl-res"></div>
  <div class="grid">
   <div class="panel wide"><h3>Resultados da semana</h3><p class="sub">Atividades importadas do Garmin ou de outro app (CSV, PDF, foto ou print). Cada uma é ligada ao dia certo pela data.</p>
-   ${all.length?all.map(a=>`<div class="row"><span><b style="color:var(--${a.w})">${AB[a.i]}</b> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" em "+esc(a.tempo):""}${a.pace?", pace "+esc(a.pace):""}${a.fc?", FC "+esc(a.fc):""}</span></div>`).join(""):`<p class="sub" style="margin:0">Nenhum resultado importado nesta semana ainda.</p>`}</div>
+   ${all.length?all.map(a=>`<div class="row"><span><b>${AB[a.i]}</b> <span class="who-tag ${a.w}">${esc(quem(a.w))}</span> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" em "+esc(a.tempo):""}${a.pace?", pace "+esc(a.pace):""}${a.fc?", FC "+esc(a.fc):""}</span></div>`).join(""):`<p class="sub" style="margin:0">Nenhum resultado importado nesta semana ainda.</p>`}</div>
   <div class="panel"><h3>Corrida</h3><p class="sub">Km por dia. ${esc(NA())}: ${num(sum(kmPa).toFixed(1))} km planejados, ${num(sum(rkPa).toFixed(1))} km realizados. ${esc(NP())}: ${num(sum(kmPo).toFixed(1))} km planejados.</p>${chart([{name:NA()+" planejado",color:"var(--pace)",values:kmPa},{name:NA()+" realizado",color:"var(--ok)",values:rkPa},{name:NP()+" planejado",color:"var(--power)",values:kmPo}],"km")}</div>
   <div class="panel"><h3>Carga de treino</h3><p class="sub">Minutos × esforço (0 a 10). Mostra se os picos dos dois caem no mesmo dia.</p>${chart([{name:NP(),color:"var(--power)",values:ldPo},{name:NA(),color:"var(--pace)",values:ldPa}],"pontos")}</div>
   <div class="panel"><h3>Distribuição por zona</h3><p class="sub">Só trabalho aeróbico e de condicionamento; séries de força ficam de fora.</p>${zoneBlock(NP(),"var(--power)",zPo)}${zoneBlock(NA(),"var(--pace)",zPa)}</div>
