@@ -57,7 +57,7 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .banner{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 14px;font-size:.92rem;color:var(--muted);margin-bottom:16px}
 
 /* Faixa de dias */
-.strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:22px}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:22px}
 .strip button{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:9px 4px 8px;cursor:pointer;text-align:center;transition:border-color .15s}
 .strip button:hover{border-color:var(--muted)}
 .strip button[aria-pressed="true"]{background:linear-gradient(160deg,var(--ink),#26306B);border-color:var(--ink);color:var(--on-ink);box-shadow:0 6px 16px -8px rgba(22,32,74,.55)}
@@ -118,6 +118,9 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .chk input{accent-color:var(--ok);width:16px;height:16px;margin:0}
 .chk label:has(input:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
 .chk .sub{width:100%;font-size:.8rem;color:var(--muted);margin-top:8px}
+.kpi{border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--surface));color:var(--ok);border-radius:999px;padding:1px 9px;font-size:.8rem}
+.kpi b{color:inherit}
+.kpi.warn{border-color:color-mix(in srgb,var(--warn) 50%,var(--line));background:color-mix(in srgb,var(--warn) 10%,var(--surface));color:var(--warn)}
 .who-tag{display:inline-block;font-size:.74rem;font-weight:700;border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
 .who-tag.power{color:var(--power);background:var(--power-soft)} .who-tag.pace{color:var(--pace);background:var(--pace-soft)}
 .agua{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:9px 12px;margin-top:2px}
@@ -191,6 +194,13 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .rot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:12px}
 .rot-item{background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:7px 9px;font-size:.82rem}
 .rot-item b{display:block;font-size:.75rem;color:var(--power);text-transform:uppercase}
+.rot-item.hoje{border-color:var(--power);background:var(--power-soft)}
+.menu-head{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin:4px 0 14px}
+.menu-head h3{margin:0;font-size:1.1rem}
+.menu-head p{margin:2px 0 0;font-size:.84rem;color:var(--muted)}
+.menu-nav{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:.85rem;font-weight:700;color:var(--ink);cursor:pointer;white-space:nowrap}
+.opt-tag{margin-left:auto;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.prot-dia{margin:8px 0 0;font-size:.88rem;border-left:3px solid var(--power);padding-left:8px}
 
 .diet-log{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:18px}
 .diet-log-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
@@ -207,7 +217,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .diet-obs-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
 .diet-obs-row textarea{flex:1;min-width:240px;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-md);padding:9px 12px;resize:vertical;min-height:58px}
 
-.diet-week-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:14px}
+.diet-week-cards{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px}
 @media (max-width:780px){.diet-week-cards{grid-template-columns:repeat(2,1fr)}}
 .dw-card{border:1px solid var(--line-2);background:var(--surface-2);border-radius:var(--r-sm);padding:8px 9px;font-size:.8rem}
 .dw-card.ok{border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--surface))}
@@ -418,12 +428,15 @@ window.dbReady = new Promise(async (resolve) => {
 </script>
 
 <script>
-const DIAS=["Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
-const AB=["Seg","Ter","Qua","Qui","Sex","Sáb"];
+const DIAS=["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+const AB=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 const ZN=["Z1","Z2","Z3","Z4","Z5"];
 const ZD=["Z1 muito leve, regenerativo","Z2 leve, base aeróbica","Z3 moderado","Z4 forte, limiar","Z5 muito forte"];
 const S=(titulo,tipo,min,rpe,km,zonas,blocos,nota)=>({titulo,tipo,min,rpe,km,zonas,blocos,nota:nota||""});
 const B=(nome,...itens)=>({nome,itens});
+/* item com números para o cálculo de tempo real (KPI): séries, repetições, segundos de trabalho, descanso, lados */
+const X=(t,series,reps,seg,desc,lados)=>({t,series,reps,seg,desc,lados:lados||1});
+const BV=(nome,voltas,...itens)=>({nome,voltas,itens});
 const R=(titulo,km,min,rpe,zonas,passos,obs)=>({titulo,km,min,rpe,zonas,passos,obs:obs||""});
 
 /* Semana base estruturada com as corridas da planilha e volume mínimo de 50–60 min/dia para o Pace */
@@ -501,8 +514,25 @@ const DEFAULT_WEEK={
    a:S("Ativação pré-longão","Complemento",10,2,0,[0,0,0,0,0],[
     B("Antes de correr","2×10 ponte de glúteo","2×10 elevação de panturrilha","2×8 avanço sem peso por perna")]),
    b:S("Rolo e alongamento pós-longão","Regenerativo",15,2,0,[0,0,0,0,0],[
-    B("Depois de correr","Rolo em panturrilha, quadríceps e glúteo (1' cada)","Alongamento de flexores do quadril e posterior de coxa")])}}
+    B("Depois de correr","Rolo em panturrilha, quadríceps e glúteo (1' cada)","Alongamento de flexores do quadril e posterior de coxa")])}},
+ DOMINGO_PADRAO()
  ]};
+/* Domingo regenerativo (40 a 50 min reais): funcional leve, mobilidade e musculação leve, para os dois */
+function DOMINGO_PADRAO(){return {nota:"Domingo regenerativo: tudo leve, sem chegar à falha, para começar a semana recuperado.",
+  power:S("Regenerativo: funcional + musculação leve","Regenerativo",45,3,0,[20,0,0,0,0],[
+   B("Aeróbico leve",X("12' de bike ou remo em Z1",1,0,720,0)),
+   BV("Funcional leve (2 voltas)",2,X("Kettlebell swing leve 15 repetições",1,15,0,20),X("Goblet squat leve 12 repetições",1,12,0,20),X("Remada no TRX 12 repetições",1,12,0,20),X("Farmer's carry leve 40 m",1,0,40,30)),
+   B("Musculação leve",X("Face pull 2×15",2,15,0,45),X("Hip thrust leve 2×12",2,12,0,45)),
+   B("Mobilidade",X("10' de quadril, ombros e coluna torácica",1,0,600,0))]),
+  pace:{corrida:null,
+   a:S("Musculação leve (corpo todo)","Musculação leve",45,4,0,[8,0,0,0,0],[
+    B("Aquecimento",X("8' de bike ou elíptico em Z1",1,0,480,0)),
+    B("Principal (cargas leves, sem falha)",X("Leg press 2×12",2,12,0,60),X("Puxada frontal 2×12",2,12,0,60),X("Supino com halteres 2×12",2,12,0,60),X("Remada baixa 2×12",2,12,0,60),X("Cadeira flexora 2×12",2,12,0,60),X("Elevação pélvica 2×12",2,12,0,60)),
+    B("Core e soltura",X("Dead bug 2×10",2,10,0,30),X("5' de alongamento",1,0,300,0))]),
+   b:S("Funcional regenerativo e mobilidade","Funcional leve",45,3,0,[15,0,0,0,0],[
+    B("Aeróbico leve",X("12' de caminhada ou bike em Z1",1,0,720,0)),
+    BV("Circuito leve (3 voltas)",3,X("Ponte de glúteo 15 repetições",1,15,0,15),X("Bird dog 10 por lado",1,10,0,15,2),X("Prancha 30\"",1,0,30,15),X("Clamshell 12 por lado",1,12,0,15,2)),
+    B("Mobilidade e rolo",X("12' de quadril, tornozelo, coluna torácica e rolo leve",1,0,720,0))])}}}
 
 /* Plano alimentar oficial da Joanna (Nutricionista Lorena Fernandes - 06/11/2026 - 1.647 kcal) */
 let MEALS_JOANNA=[
@@ -747,7 +777,7 @@ const artPace=t=>t.replace(/(^|[^\p{L}])([Aa])o \{pace\}/gu,(m,p,a)=>p+(a==="A"?
 const nm=t=>artPace(String(t??"")).replace(/\{power\}/g,NP()).replace(/\{pace\}/g,NA());
 function dt(i){const d=new Date(state.week.id+"T12:00:00");d.setDate(d.getDate()+i);return d}
 const fmt=d=>d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
-function todayIdx(){const t=new Date().toDateString();for(let i=0;i<6;i++) if(dt(i).toDateString()===t) return i;return -1}
+function todayIdx(){const t=new Date().toDateString();for(let i=0;i<7;i++) if(dt(i).toDateString()===t) return i;return -1}
 const zc=i=>`var(--z${i+1})`;
 const sum=a=>(a||[]).reduce((x,y)=>x+(+y||0),0);
 const num=v=>String(+v||0).replace(".",",");
@@ -766,7 +796,7 @@ function render(){
  const wkList=state.weeks.length>1
   ?`<select class="wk-select" id="wk-switch" aria-label="Selecionar semana">${state.weeks.map(x=>`<option value="${esc(x.id)}" ${x.id===w.id?"selected":""}>${esc(x.nome)}</option>`).join("")}</select>`
   :`<b>${esc(w.nome)}</b>,`;
- document.getElementById("wk").innerHTML=`${syncBadge}${wkList} ${fmt(dt(0))} a ${fmt(dt(5))}. ${esc(w.fase||"")}`;
+ document.getElementById("wk").innerHTML=`${syncBadge}${wkList} ${fmt(dt(0))} a ${fmt(dt(w.dias.length-1))}. ${esc(w.fase||"")}`;
  const r=document.getElementById("race");
  if(state.cfg.prova){const days=Math.ceil((new Date(state.cfg.prova+"T08:00:00")-new Date())/864e5);
   r.innerHTML=days>0?`<span class="n">${Math.ceil(days/7)}</span>semanas para o Hyrox Fortaleza`:`<span class="n">0</span>Hyrox Fortaleza`;}
@@ -780,12 +810,48 @@ const descP=s=>s.desc?`<p class="desc">${esc(nm(s.desc))}</p>`:"";
 function blocos(s,pace){return (s.blocos||[]).map(b=>`<div class="bl"><h4>${esc(nm(b.nome))}</h4><ul>${(b.itens||[]).map(i=>item(i,pace)).join("")}</ul></div>`).join("")}
 const ck=(k,l)=>`<label><input type="checkbox" data-k="${k}" ${isC(k)?"checked":""}>${l}</label>`;
 
+/* ===== KPI de tempo real do treino =====
+   Cada exercício traz séries, repetições (ou segundos de trabalho), descanso e lados.
+   Tempo = trabalho + descansos + preparação. Cada repetição leva 4 s (cadência controlada);
+   exercícios de força somam 60 s de preparação (ajustar carga, trocar de aparelho);
+   em circuitos (bloco com "voltas"), 15 s de troca entre exercícios a cada volta. */
+const KPI={rep:4,prep:60,troca:15};
+function kpiItem(i){
+ if(!i||typeof i!=="object")return null;
+ const se=+i.series||0,re=+i.reps||0,sg=+i.seg||0,de=+i.desc||0,la=Math.max(1,+i.lados||1);
+ if(!se||(!re&&!sg))return null;
+ return {trab:se*la*(re?re*KPI.rep:sg),desc:se*de,forca:re>0};
+}
+function kpiMin(s){
+ if(!s||!Array.isArray(s.blocos)||!s.blocos.length)return 0;
+ let tot=0;
+ for(const b of s.blocos){
+  const it=(b.itens||[]).map(kpiItem);if(!it.length||it.some(x=>!x))return 0;
+  const v=Math.max(1,+b.voltas||1);
+  tot+=v>1?v*it.reduce((a,x)=>a+x.trab+x.desc+KPI.troca,0):it.reduce((a,x)=>a+x.trab+x.desc+(x.forca?KPI.prep:0),0);
+ }
+ return Math.round(tot/60);
+}
+/* faixa de tempo real pedida para cada sessão: domingo regenerativo 40–50 min para os dois;
+   Joanna 50–60 min nos dias sem corrida e 15–20 min de complemento nos dias com corrida */
+function faixa(who,d,day){
+ if(d===6)return [40,50];
+ if(who==="pace")return day&&day.pace&&day.pace.corrida?[15,20]:[50,60];
+ return null;
+}
+const minReal=s=>kpiMin(s)||+s.min||0;
+function kpiChip(s,who,d){
+ const k=kpiMin(s);if(!k)return "";
+ const f=faixa(who,d,state.week.dias[d]),fora=f&&(k<f[0]-1||k>f[1]+1);
+ return `<span class="kpi${fora?" warn":""}" title="Tempo real calculado pelo KPI: séries × repetições (4 s cada) ou tempo, mais descansos e preparação">≈ <b>${k}</b> min reais${f?` · alvo ${f[0]}–${f[1]}`:""}</span>`;
+}
+
 /* Água: meta diária = 35 ml por kg de peso + 500 ml por hora de treino planejado no dia */
 const ML_KG=35, ML_HORA=500;
 const pesoDe=who=>+((state.cfg.pesos||{})[who])||0;
 function treinoMin(who,d){const day=state.week.dias[d];if(!day)return 0;
- if(who==="power")return +day.power.min||0;
- const o=day.pace[opt(d)]||day.pace.a;return (+o.min||0)+(day.pace.corrida?(+day.pace.corrida.min||0):0)}
+ if(who==="power")return minReal(day.power);
+ const o=day.pace[opt(d)]||day.pace.a;return minReal(o)+(day.pace.corrida?(+day.pace.corrida.min||0):0)}
 const metaBase=who=>Math.round(pesoDe(who)*ML_KG/100)*100;
 function metaAgua(who,d){const kg=pesoDe(who);if(!kg)return 0;return Math.round((kg*ML_KG+treinoMin(who,d)*ML_HORA/60)/100)*100}
 const litros=ml=>num(+(ml/1000).toFixed(2))+" L";
@@ -822,7 +888,7 @@ function powerCard(s,d){
  return `<article class="card">${zstripe(s.zonas)}<div class="ci">
   <div class="kind"><span>${esc(s.tipo)}</span><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="power" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="power" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,"power")}${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
-  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}</div>
+  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}${kpiChip(s,"power",d)}</div>
   ${blocos(s,false)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
    ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${aguaHTML("power",d)}
@@ -846,7 +912,7 @@ function optCard(p,d){
  return `<article class="card">${zstripe(s.zonas)}<div class="ci">
   <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="${o}" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="${o}" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,o)}${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
-  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span></div>
+  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,"pace",d)}</div>
   ${blocos(s,true)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
    ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${aguaHTML("pace",d)}
@@ -879,10 +945,10 @@ function vSemana(v){
 }
 
 function chart(series,unit){
- const W=560,H=200,pl=34,pb=24,pt=10,iw=W-pl-8,ih=H-pb-pt,gw=iw/6,bw=Math.min(22,(gw-14)/series.length);
+ const nd=Math.max(...series.map(s=>s.values.length)),W=560,H=200,pl=34,pb=24,pt=10,iw=W-pl-8,ih=H-pb-pt,gw=iw/nd,bw=Math.min(22,(gw-14)/series.length);
  const m=Math.max(1,...series.flatMap(s=>s.values)),st=m>200?100:m>50?25:m>10?5:2,top=Math.ceil(m/st)*st;
  let g="";for(let k=0;k<=4;k++){const y=pt+ih-ih*k/4;g+=`<line x1="${pl}" x2="${W-8}" y1="${y}" y2="${y}" stroke="var(--line-2)"/><text x="${pl-6}" y="${y+4}" text-anchor="end">${Math.round(top*k/4)}</text>`}
- let b="";for(let i=0;i<6;i++){const x0=pl+gw*i+(gw-bw*series.length-4*(series.length-1))/2;
+ let b="";for(let i=0;i<nd;i++){const x0=pl+gw*i+(gw-bw*series.length-4*(series.length-1))/2;
   series.forEach((s,j)=>{const v=s.values[i]||0,h=ih*v/top;b+=`<rect x="${x0+j*(bw+4)}" y="${pt+ih-h}" width="${bw}" height="${h}" rx="4" fill="${s.color}"><title>${esc(s.name)}: ${num(v)} ${unit}</title></rect>`});
   b+=`<text x="${pl+gw*i+gw/2}" y="${H-6}" text-anchor="middle">${AB[i]}</text>`}
  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Gráfico por dia">${g}${b}</svg><div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`;
@@ -898,15 +964,15 @@ function vPainel(v){
  const kmPo=D.map(d=>+d.power.km||0), kmPa=D.map(d=>+(d.pace.corrida?.km)||0);
  const minPo=D.map(d=>+d.power.min||0);
  const minPa=D.map((d,i)=>{const o=d.pace[opt(i)]||d.pace.a,c=d.pace.corrida;return (+o.min||0)+(c?(+c.min||0):0)});
- const avgPo=Math.round(sum(minPo)/6), avgPa=Math.round(sum(minPa)/6);
+ const ND=D.length,avgPo=Math.round(sum(minPo)/ND), avgPa=Math.round(sum(minPa)/ND);
  const ldPo=D.map(d=>(+d.power.min||0)*(+d.power.rpe||0));
  const ldPa=D.map((d,i)=>{const o=d.pace[opt(i)]||d.pace.a,c=d.pace.corrida;return (+o.min||0)*(+o.rpe||0)+(c?(+c.min||0)*(+c.rpe||0):0)});
  const zPo=[0,0,0,0,0],zPa=[0,0,0,0,0];
  D.forEach((d,i)=>{(d.power.zonas||[]).forEach((m,k)=>zPo[k]+=+m||0);const o=d.pace[opt(i)]||d.pace.a;[o.zonas,d.pace.corrida?.zonas].forEach(z=>(z||[]).forEach((m,k)=>zPa[k]+=+m||0))});
  const cnt=(w,k)=>D.filter((_,i)=>isC(`${i}:${w}:${k}`)).length;
  const runs=D.filter(d=>d.pace.corrida).length, runsDone=D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length;
- const mealsPa=D.reduce((a,_,i)=>a+MEALS_JOANNA.filter(m=>isC(`${i}:pace:${m.k}`)).length,0), mtPa=MEALS_JOANNA.length*6;
- const mealsPo=D.reduce((a,_,i)=>a+DIET_EWERTON.refeicoes.filter(m=>isC(`${i}:power:${m.k}`)).length,0), mtPo=DIET_EWERTON.refeicoes.length*6;
+ const mealsPa=D.reduce((a,_,i)=>a+MEALS_JOANNA.filter(m=>isC(`${i}:pace:${m.k}`)).length,0), mtPa=MEALS_JOANNA.length*ND;
+ const mealsPo=D.reduce((a,_,i)=>a+DIET_EWERTON.refeicoes.filter(m=>isC(`${i}:power:${m.k}`)).length,0), mtPo=DIET_EWERTON.refeicoes.length*ND;
  const c=state.cfg;
  const rkPa=D.map((_,i)=>sum(acts("pace",i).filter(a=>a.run).map(a=>a.km)));
  const all=["pace","power"].flatMap(w=>D.flatMap((_,i)=>acts(w,i).map(a=>({...a,w,i}))));
@@ -921,9 +987,9 @@ function vPainel(v){
   <div class="panel"><h3>Distribuição por zona</h3><p class="sub">Só trabalho aeróbico e de condicionamento; séries de força ficam de fora.</p>${zoneBlock(NP(),"var(--power)",zPo)}${zoneBlock(NA(),"var(--pace)",zPa)}</div>
   <div class="panel"><h3>Adesão e volume</h3><p class="sub">Marcações feitas na aba Dia e média diária planejada.</p>
    <div class="row"><span>Média diária (${esc(NP())} / ${esc(NA())})</span><b>${avgPo} min / ${avgPa} min</b></div>
-   <div class="row"><span>Treinos do ${esc(NP())}</span><b>${cnt("power","treino")} de 6</b></div>
+   <div class="row"><span>Treinos do ${esc(NP())}</span><b>${cnt("power","treino")} de ${ND}</b></div>
    <div class="row"><span>Corridas da ${esc(NA())}</span><b>${runsDone} de ${runs}</b></div>
-   <div class="row"><span>Musculação ou funcional da ${esc(NA())}</span><b>${cnt("pace","treino")} de 6</b></div>
+   <div class="row"><span>Musculação ou funcional da ${esc(NA())}</span><b>${cnt("pace","treino")} de ${ND}</b></div>
    <div class="row"><span>Água: meta batida (${esc(NP())} / ${esc(NA())})</span><b>${cnt("power","agua")} / ${cnt("pace","agua")} dias</b></div>
    <div class="row"><span>Meta base de água, sem treino (${esc(NP())} / ${esc(NA())})</span><b>${litros(metaBase("power"))} / ${litros(metaBase("pace"))}</b></div>
    <div class="row"><span>Sono de 7h ou mais</span><b>${cnt("power","sono")} / ${cnt("pace","sono")} dias</b></div>
@@ -943,20 +1009,20 @@ function vPainel(v){
 
 /* Evolução: desempenho semana a semana */
 function weekStats(plan,log,res){
- const chk=(log&&log.chk)||{},D=(plan&&plan.dias)||[];
- const c=(w,k)=>[0,1,2,3,4,5].filter(i=>chk[`${i}:${w}:${k}`]).length;
+ const chk=(log&&log.chk)||{},D=(plan&&plan.dias)||[],IDX=D.map((_,i)=>i),ND=D.length||6;
+ const c=(w,k)=>IDX.filter(i=>chk[`${i}:${w}:${k}`]).length;
  const poPlan=D.filter(d=>d.power&&!/opcional/i.test((d.power.titulo||"")+" "+(d.power.tipo||""))).length||5;
  const runs=D.filter(d=>d.pace&&d.pace.corrida).length;
  const runsDone=D.filter((d,i)=>d.pace&&d.pace.corrida&&chk[i+":pace:corrida"]).length;
  const kmOf=w=>Object.values((res&&res[w])||{}).flat().filter(a=>a&&a.run).reduce((s,a)=>s+(+a.km||0),0);
- const mealsOf=(w,list)=>[0,1,2,3,4,5].reduce((s,i)=>s+list.filter(m=>chk[`${i}:${w}:${m.k}`]).length,0);
+ const mealsOf=(w,list)=>IDX.reduce((s,i)=>s+list.filter(m=>chk[`${i}:${w}:${m.k}`]).length,0);
  const po=Math.min(c("power","treino"),poPlan),pa=c("pace","treino");
- return {po,poPlan,pa,runs,runsDone,
-  adPo:poPlan?po/poPlan:0, adPa:(6+runs)?(pa+runsDone)/(6+runs):0,
+ return {po,poPlan,pa,runs,runsDone,nd:ND,
+  adPo:poPlan?po/poPlan:0, adPa:(ND+runs)?(pa+runsDone)/(ND+runs):0,
   kmPa:kmOf("pace"),kmPo:kmOf("power"),
   sonoPo:c("power","sono"),sonoPa:c("pace","sono"),
-  refPo:mealsOf("power",DIET_EWERTON.refeicoes)/(DIET_EWERTON.refeicoes.length*6||1),
-  refPa:mealsOf("pace",MEALS_JOANNA)/(MEALS_JOANNA.length*6||1)};
+  refPo:mealsOf("power",DIET_EWERTON.refeicoes)/(DIET_EWERTON.refeicoes.length*ND||1),
+  refPa:mealsOf("pace",MEALS_JOANNA)/(MEALS_JOANNA.length*ND||1)};
 }
 async function loadHist(){
  if(state.histLoading)return;state.histLoading=true;
@@ -986,7 +1052,7 @@ function histPanel(){
  <div class="tbl"><table class="hist"><thead><tr><th>Semana</th><th>Treinos ${esc(NP())}</th><th>Treinos ${esc(NA())} (com corridas)</th><th>Km corridos ${esc(NA())}</th><th>Km corridos ${esc(NP())}</th><th>Sono 7h+ (${esc(NP())} / ${esc(NA())})</th><th>Dieta (${esc(NP())} / ${esc(NA())})</th></tr></thead><tbody>
  ${rows.map(({w,st,cur})=>`<tr><td><b>${esc(w.nome||w.id)}</b>${cur?' <span style="color:var(--muted)">(atual)</span>':""}</td>
   <td>${bar(st.adPo,"var(--power)")}<span class="mt">${st.po} de ${st.poPlan}</span></td>
-  <td>${bar(st.adPa,"var(--pace)")}<span class="mt">${st.pa} de 6, corridas ${st.runsDone} de ${st.runs}</span></td>
+  <td>${bar(st.adPa,"var(--pace)")}<span class="mt">${st.pa} de ${st.nd}, corridas ${st.runsDone} de ${st.runs}</span></td>
   <td>${num(st.kmPa.toFixed(1))} km</td><td>${num(st.kmPo.toFixed(1))} km</td>
   <td>${st.sonoPo} / ${st.sonoPa} dias</td><td>${pct(st.refPo)} / ${pct(st.refPa)}</td></tr>`).join("")}
  </tbody></table></div>${trend}
@@ -995,6 +1061,15 @@ function histPanel(){
 
 /* Plano Alimentar Completo (Ewerton + Joanna + Diário de Adesão & Observações) */
 const STATUS_LABELS={ok:"Segui o plano",partial:"Segui parcialmente",off:"Não segui / Fora da dieta"};
+/* proteína do dia do Ewerton (alternância do plano) */
+const protDia=d=>{const a=(DIET_EWERTON.alternancia||[]).find(([dia])=>dia===DIAS[d]);return a?a[1]:""};
+/* cardápio do dia: Ewerton mostra a proteína do dia no almoço e no jantar;
+   Joanna gira as opções da nutricionista (principal + trocas) ao longo da semana, começando pela principal na segunda */
+function cardapio(m,d,isPo){
+ const todas=[m.p||[],...(m.s||[])],n=todas.length;
+ if(isPo){const prot=/almoco|jantar/.test(m.k)?protDia(d):"";return {itens:todas[0],idx:0,n,todas,prot}}
+ const idx=d%n;return {itens:todas[idx],idx,n,todas,prot:""};
+}
 
 function vNutri(v){
  const D=state.week.dias;
@@ -1061,13 +1136,20 @@ function vNutri(v){
   <div style="font-size:.88rem;color:var(--muted);margin-top:2px">${esc(DIET_EWERTON.sub)}</div>
   ${(DIET_EWERTON.macros||[]).length?`<div class="macro-row">${DIET_EWERTON.macros.map(m=>`<span class="macro-pill po">${esc(m)}</span>`).join("")}</div>`:""}
   ${(DIET_EWERTON.alternancia||[]).length?`<div style="margin-top:12px;font-size:.82rem;font-weight:700;color:var(--muted)">Alternância das proteínas (Almoço e Jantar)</div>
-  <div class="rot-grid">${DIET_EWERTON.alternancia.map(([dia,prot])=>`<div class="rot-item"><b>${esc(dia)}</b>${esc(prot)}</div>`).join("")}</div>`:""}
+  <div class="rot-grid">${DIET_EWERTON.alternancia.map(([dia,prot])=>`<div class="rot-item${dia===DIAS[d]?" hoje":""}"><b>${esc(dia)}</b>${esc(prot)}</div>`).join("")}</div>`:""}
  </section>
  `:""}
 
- <div class="meals">${meals.map(m=>`<div class="meal"><div class="h"><span class="time ${isPo?"po":""}">${m.h}</span><h4>${m.n}</h4></div>
-  <ul>${(m.p||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${m.obs?`<p class="obs">${esc(m.obs)}</p>`:""}
-  ${(m.s||[]).length?`<details><summary>${m.s.length} ${m.s.length>1?"substituições":"substituição"}</summary>${m.s.map((s,i)=>`<div class="sub-opt"><b>Opção ${i+2}</b><ul>${s.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</details>`:""}</div>`).join("")}</div>
+ <div class="menu-head">
+  <button class="menu-nav" data-diet-dia="${(d+6)%7}" aria-label="Dia anterior: ${DIAS[(d+6)%7]}">‹ ${AB[(d+6)%7]}</button>
+  <div><h3>Cardápio de ${DIAS[d].toLowerCase()}${d<5?"-feira":""}, ${fmt(dt(d))}</h3>
+  <p>${isPo?`Proteína de almoço e jantar segue a alternância do plano: <b>${esc(protDia(d))}</b>.`:`Sugestão do dia, girando as trocas da nutricionista ao longo da semana. As outras opções continuam valendo.`}</p></div>
+  <button class="menu-nav" data-diet-dia="${(d+1)%7}" aria-label="Próximo dia: ${DIAS[(d+1)%7]}">${AB[(d+1)%7]} ›</button>
+ </div>
+ <div class="meals">${meals.map(m=>{const c=cardapio(m,d,isPo);return `<div class="meal"><div class="h"><span class="time ${isPo?"po":""}">${m.h}</span><h4>${m.n}</h4>${c.n>1?`<span class="opt-tag">Opção ${c.idx+1} de ${c.n}</span>`:""}</div>
+  ${c.prot?`<p class="prot-dia">Proteína de ${DIAS[d].toLowerCase()}: <b>${esc(c.prot)}</b></p>`:""}
+  <ul>${c.itens.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${m.obs&&!c.prot?`<p class="obs">${esc(m.obs)}</p>`:""}
+  ${c.n>1?`<details><summary>Ver as outras ${c.n-1} ${c.n-1>1?"opções":"opção"}</summary>${c.todas.map((s,i)=>i===c.idx?"":`<div class="sub-opt"><b>Opção ${i+1}</b><ul>${s.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}</details>`:""}</div>`}).join("")}</div>
 
  <div class="adh"><table><thead><tr><th>Adesão por refeição (${esc(isPo?NP():NA())})</th>${D.map((_,i)=>`<th>${AB[i]}</th>`).join("")}</tr></thead><tbody>
  ${meals.map(m=>`<tr><td>${m.h} ${m.n}</td>${D.map((_,i)=>`<td><input type="checkbox" aria-label="${m.n}, ${DIAS[i]}" data-k="${i}:${who}:${m.k}" ${isC(`${i}:${who}:${m.k}`)?"checked":""}></td>`).join("")}</tr>`).join("")}
@@ -1086,7 +1168,7 @@ function vNova(v){
  ${!hasKey?`<div class="keybox"><div class="lbl" style="margin:0">Ativar geração com IA (Gemini)</div>
   <p class="sub" style="margin:4px 0 0;font-size:.86rem;color:var(--muted)">Cole uma única vez sua chave gratuita do <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> (ela fica sincronizada nos dois celulares):</p>
   <div class="keybox-row"><input type="password" id="nova-apikey" placeholder="AIzaSy..."><button class="btn sm" data-act="save-key">Salvar chave</button></div></div>`:""}
- <div class="tool" style="margin-bottom:8px"><p class="lbl" style="margin:0">1. Corridas da planilha (Segunda a Sábado)</p><button class="btn sm ghost" data-act="imp-runsheet">Ler print ou PDF da planilha</button></div>
+ <div class="tool" style="margin-bottom:8px"><p class="lbl" style="margin:0">1. Corridas da planilha (Segunda a Domingo)</p><button class="btn sm ghost" data-act="imp-runsheet">Ler print ou PDF da planilha</button></div>
  <div class="runs">${AB.map((a,i)=>`<label>${a}<textarea data-run="${i}" placeholder="Sem corrida neste dia"></textarea></label>`).join("")}</div>
  </div>
  <p class="lbl">${ind?`O que mudar nos treinos ${esc(doDa(gw))}?`:"2. O que mudar ou focar nesta semana?"}</p>
@@ -1157,18 +1239,26 @@ async function geminiJson(prompt,images,signal){
 /* Geração de próxima semana */
 const okS=s=>s&&typeof s.titulo==="string"&&Array.isArray(s.blocos)&&Array.isArray(s.zonas)&&s.zonas.length===5;
 const okR=r=>r===null||r===undefined||(typeof r.titulo==="string"&&Array.isArray(r.passos)&&Array.isArray(r.zonas)&&r.zonas.length===5);
-const valid=w=>w&&Array.isArray(w.dias)&&w.dias.length===6&&w.dias.every(d=>okS(d.power)&&d.pace&&okS(d.pace.a)&&okS(d.pace.b)&&okR(d.pace.corrida));
+/* valida a semana; semanas antigas (segunda a sábado) ganham o domingo regenerativo padrão */
+const valid=w=>{
+ if(!w||!Array.isArray(w.dias))return false;
+ if(w.dias.length===6)w.dias.push(DOMINGO_PADRAO());
+ return w.dias.length===7&&w.dias.every(d=>okS(d.power)&&d.pace&&okS(d.pace.a)&&okS(d.pace.b)&&okR(d.pace.corrida));
+};
 function nextId(id){const d=new Date(id+"T12:00:00");d.setDate(d.getDate()+7);return d.toISOString().slice(0,10)}
 function resumo(){const D=state.week.dias,c=(w,k)=>D.filter((_,i)=>isC(`${i}:${w}:${k}`)).length;
  const mealsPa=D.reduce((a,_,i)=>a+MEALS_JOANNA.filter(m=>isC(`${i}:pace:${m.k}`)).length,0);
  const mealsPo=D.reduce((a,_,i)=>a+DIET_EWERTON.refeicoes.filter(m=>isC(`${i}:power:${m.k}`)).length,0);
- return `Power fez ${c("power","treino")} de 6 treinos. Pace fez ${D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length} de ${D.filter(d=>d.pace.corrida).length} corridas e ${c("pace","treino")} de 6 sessões complementares. Sono 7h+: Power ${c("power","sono")}, Pace ${c("pace","sono")} dias. Refeições: Power ${mealsPo} de ${DIET_EWERTON.refeicoes.length*6}, Pace ${mealsPa} de ${MEALS_JOANNA.length*6}.`}
+ const N=D.length;
+ return `Power fez ${c("power","treino")} de ${N} treinos. Pace fez ${D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length} de ${D.filter(d=>d.pace.corrida).length} corridas e ${c("pace","treino")} de ${N} sessões complementares. Sono 7h+: Power ${c("power","sono")}, Pace ${c("pace","sono")} dias. Refeições: Power ${mealsPo} de ${DIET_EWERTON.refeicoes.length*N}, Pace ${mealsPa} de ${MEALS_JOANNA.length*N}.`}
 
 /* ===== Treinos individuais: refazer só de um atleta ===== */
-const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número,"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado"}]}],"nota":"texto curto ou vazio"}`;
+const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número (tempo real pelo KPI),"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","voltas":número (1 se não for circuito),"itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado","series":número,"reps":número (0 se for por tempo),"seg":segundos de trabalho por série quando for por tempo (ex.: prancha 40, bike 600),"desc":segundos de descanso depois de cada série,"lados":2 se for unilateral feito dos dois lados, senão 1}]}],"nota":"texto curto ou vazio"}`;
+/* regras de tempo real (KPI) que o app usa para conferir cada sessão */
+const KPI_SPEC=`TEMPO REAL (KPI): todo exercício precisa de "series", "reps" (ou "seg") e "desc"; blocos em circuito usam "voltas" (com series 1 em cada item). O app calcula o tempo real assim: cada repetição leva 4 s; exercício por tempo usa "seg"; soma os descansos; cada exercício de força (com repetições, fora de circuito) soma 60 s de preparação (ajustar carga, trocar de aparelho); em circuitos, 15 s de troca entre exercícios a cada volta. Aquecimento, cardio contínuo e mobilidade entram como item por tempo (series 1, reps 0, seg = duração). Exemplos da conta: 4 séries × 8 repetições com 60 s de descanso = 4×8×4 + 4×60 + 60 = 428 s (7,1 min); 3 séries × 10 por perna (lados 2) com 45 s = 3×2×10×4 + 3×45 + 60 = 435 s (7,3 min); prancha 3×40 s com 30 s = 3×40 + 3×30 = 210 s (3,5 min). Some item por item ANTES de responder e mire no MEIO da faixa pedida (ex.: 55 min numa faixa de 50 a 60). Monte séries, exercícios e descansos para o tempo real cair na faixa e coloque esse valor em "min".`;
 const PERFIL={
- power:`Atleta "power": quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação, de segunda a sexta; sábado é opcional. Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine, com pelo menos um dia leve de Z2.`,
- pace:`Atleta "pace": corredora cujas corridas são definidas pelo treinador dela e NÃO podem ser alteradas. Para cada dia há duas opções: "a" musculação (cadeia posterior, superiores, core, estabilidade de joelho e quadril, sem pernas pesadas na véspera de corrida forte ou longão) e "b" funcional, mobilidade e core. Nos dias sem corrida, cada opção tem de 50 a 60 minutos; nos dias com corrida, são complementos de 15 a 20 minutos.`
+ power:`Atleta "power": treina no Galpão Sport Center Fortaleza (box de Crossfit e Hyrox). Quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação de segunda a sexta; sábado é opcional. Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine, com pelo menos um dia leve de Z2. Domingo: sessão regenerativa de 40 a 50 min reais, combinando funcional leve, mobilidade e musculação leve (esforço 3 a 4, sem falha).`,
+ pace:`Atleta "pace": treina na rede de academias Maxforma, uma academia convencional (aparelhos, cabos, polias, halteres, barras comuns, Smith e anilhas) com um espaço de crosstraining, mas SEM barra de LPO. Siga a metodologia HWPO com foco em FORÇA: exercícios compostos e unilaterais com progressão de carga, acessórios para cadeia posterior, glúteo, core e estabilidade de joelho e quadril, e condicionamento curto no espaço de crosstraining só com materiais comuns desse espaço (como kettlebell, caixa, medicine ball e peso do corpo). PROIBIDO para ela: levantamentos olímpicos e suas variações (snatch, clean, jerk, power clean, thruster com barra olímpica), sled push/pull, SkiErg, argolas e ginástica de box (muscle-up, kipping, toes to bar) ou qualquer movimento que só dá para fazer num box de Crossfit. É corredora; as corridas são definidas pelo treinador dela e NÃO podem ser alteradas. Para cada dia há duas opções: "a" musculação (cadeia posterior, superiores, core, estabilidade de joelho e quadril, sem pernas pesadas na véspera de corrida forte ou longão) e "b" funcional e core. Nos dias SEM corrida (segunda a sábado), as duas opções são TREINOS FORTES, de esforço 7 a 8, com cargas desafiadoras (1 a 2 repetições de reserva) e 50 a 60 min REAIS pelo KPI: não encha o treino com alongamento ou caminhada para completar o tempo, o volume vem de séries de trabalho. Nos dias COM corrida, "a" e "b" são complementos de 15 a 20 min reais. Domingo: regenerativo de 40 a 50 min reais, com "a" musculação leve e "b" funcional leve com mobilidade (esforço 3 a 4).`
 };
 const quem=w=>w==="power"?NP():NA();
 const doDa=w=>w==="power"?`do ${NP()}`:`da ${NA()}`;
@@ -1181,29 +1271,57 @@ function promptBase(who){
  return `Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Use os marcadores {power} e {pace} quando citar os atletas, nunca nomes. ${PERFIL[who]}
 Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
 Evite alta intensidade no mesmo dia em que o outro atleta tem treino forte, quando possível.
+${KPI_SPEC}
 Biblioteca de treinos do treinador (prefira adaptar estes treinos):
 ${libForPrompt()}`;
 }
+/* confere o tempo real (KPI) das sessões que têm faixa definida; devolve a lista do que ficou fora */
+function foraDaFaixa(lista){
+ const out=[];
+ for(const {s,who,d,day,rot} of lista){const f=faixa(who,d,day);if(!f)continue;const k=kpiMin(s);
+  if(!k||k<f[0]-1||k>f[1]+1)out.push(`${rot}: ${k?k+" min":"sem os números do KPI"} (alvo ${f[0]} a ${f[1]} min)`)}
+ return out;
+}
+const fixMin=s=>{const k=kpiMin(s);if(k)s.min=k;return s};
+/* chama a IA; se alguma sessão ficar fora da faixa de tempo real, pede uma correção (uma vez só) */
+async function iaComKPI(prompt,signal,checar,avisar){
+ let out=await geminiJson(prompt,null,signal),fora=checar(out);
+ if(fora.length){
+  if(avisar)avisar(fora.length);
+  try{
+   const out2=await geminiJson(prompt+`\n\nCORREÇÃO OBRIGATÓRIA: pelo cálculo de tempo real (KPI), estas sessões ficaram fora da faixa: ${fora.join("; ")}. Refaça a resposta COMPLETA no mesmo formato, ajustando séries, exercícios ou descansos para cada sessão cair na faixa, com todos os números do KPI preenchidos.`,null,signal);
+   const f2=checar(out2);if(f2.length<=fora.length){out=out2;fora=f2}
+  }catch(e){if(e&&e.name==="AbortError")throw e}
+ }
+ return {out,fora};
+}
+const avisoFora=f=>f.length?` Atenção: ${f.length} ${f.length>1?"sessões ficaram":"sessão ficou"} fora da faixa de tempo (${f.join("; ")}). Dá para ajustar com "Refazer com IA" no dia.`:"";
 async function gerarParte(who){
  const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
  const pedido=(document.getElementById("ajustes").value||"").trim();
  const forma=who==="power"?'{"power":Sessao}':'{"a":Sessao,"b":Sessao}';
  const prompt=`${promptBase(who)}
 
-Tarefa: refaça APENAS os treinos do atleta "${who}" nesta semana (segunda a sábado). Não mexa em nada do outro atleta${who==="pace"?" nem nas corridas fixas":""}. Dias que o pedido não mencionar podem ficar iguais ou parecidos com os atuais.
+Tarefa: refaça APENAS os treinos do atleta "${who}" nesta semana (segunda a domingo, com o domingo regenerativo). Não mexa em nada do outro atleta${who==="pace"?" nem nas corridas fixas":""}. Dias que o pedido não mencionar podem ficar parecidos com os atuais, mas sempre com os números do KPI e na faixa de tempo real.
 Pedido do atleta: ${pedido||"variar os treinos mantendo os mesmos objetivos"}
 
 Semana atual (JSON):
 ${JSON.stringify(contextoParte(who))}
 
-Responda APENAS com JSON: {"dias":[6 itens, segunda a sábado]}, cada item no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
+Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
  btn.disabled=true;stop.hidden=false;st.textContent=`Refazendo os treinos ${doDa(who)}. Pode levar um ou dois minutos…`;ctl=new AbortController();
+ const checar=r=>{
+  if(!r||!Array.isArray(r.dias))throw {code:"formato"};
+  if(r.dias.length===6){const dom=state.week.dias[6];r.dias.push(who==="power"?{power:dom.power}:{a:dom.pace.a,b:dom.pace.b})}
+  if(r.dias.length!==7||!r.dias.every(x=>who==="power"?okS(x.power):(okS(x.a)&&okS(x.b))))throw {code:"formato"};
+  return foraDaFaixa(r.dias.flatMap((x,i)=>who==="power"?[{s:x.power,who,d:i,day:state.week.dias[i],rot:DIAS[i]}]
+   :["a","b"].map(o=>({s:x[o],who,d:i,day:state.week.dias[i],rot:`${DIAS[i]} opção ${o}`}))));
+ };
  try{
-  const r=await geminiJson(prompt,null,ctl.signal);
-  const ok=r&&Array.isArray(r.dias)&&r.dias.length===6&&r.dias.every(x=>who==="power"?okS(x.power):(okS(x.a)&&okS(x.b)));
-  if(!ok)throw {code:"formato"};
+  const {out:r,fora}=await iaComKPI(prompt,ctl.signal,checar,n=>{st.textContent=`Ajustando o tempo real de ${n} ${n>1?"sessões":"sessão"} (segunda passada)…`});
+  r.dias.forEach(x=>[x.power,x.a,x.b].forEach(s=>s&&fixMin(s)));
   state.partDraft={who,dias:r.dias,weekId:state.week.id};
-  st.textContent=`Pronto. Só os treinos ${doDa(who)} mudam. Confira e confirme.`;
+  st.textContent=`Pronto. Só os treinos ${doDa(who)} mudam. Confira e confirme.${avisoFora(fora)}`;
   document.getElementById("prev").innerHTML=partPrevHTML(state.partDraft);
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return}
@@ -1230,7 +1348,7 @@ function redoBox(d,slot){
  const who=slot==="power"?"power":"pace";
  if(r.draft){const s=r.draft;
   return `<div class="redo-box ${who}"><p class="redo-t">Sugestão da IA</p><h4 class="redo-h">${esc(nm(s.titulo))}</h4>${descP(s)}
-  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span></div>${blocos(s,who==="pace")}
+  <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,who,d)}</div>${r.err?`<p class="redo-err">${esc(r.err)}</p>`:""}${blocos(s,who==="pace")}
   <div class="actions"><button class="btn sm" data-act="redo-use">Usar este treino</button><button class="btn sm ghost" data-act="redo-retry">Tentar de novo</button><button class="btn sm ghost" data-act="redo-cancel">Cancelar</button></div></div>`}
  return `<div class="redo-box ${who}"><p class="redo-t">Refazer este treino com IA (${esc(quem(who))})</p>
   <textarea id="redo-txt" rows="2" placeholder="O que mudar? Ex.: mais glúteo, sem agachamento, treino de 40 minutos">${esc(r.pedido||"")}</textarea>
@@ -1242,7 +1360,7 @@ async function redoGo(){
  const who=r.slot==="power"?"power":"pace",day=state.week.dias[r.d];
  const atual=r.slot==="power"?day.power:day.pace[r.slot];
  const ctx=who==="power"?{dia:DIAS[r.d],treino_do_pace_no_dia:day.pace.corrida?`corrida: ${day.pace.corrida.titulo}`:day.pace.a.titulo}
-  :{dia:DIAS[r.d],opcao:r.slot==="a"?"a (musculação)":"b (funcional)",corrida_fixa_do_dia:day.pace.corrida,outra_opcao:r.slot==="a"?day.pace.b.titulo:day.pace.a.titulo,treino_do_power_no_dia:day.power.titulo,vespera_de:r.d<5&&state.week.dias[r.d+1].pace.corrida?state.week.dias[r.d+1].pace.corrida.titulo:"nada especial"};
+  :{dia:DIAS[r.d],opcao:r.slot==="a"?"a (musculação)":"b (funcional)",corrida_fixa_do_dia:day.pace.corrida,outra_opcao:r.slot==="a"?day.pace.b.titulo:day.pace.a.titulo,treino_do_power_no_dia:day.power.titulo,vespera_de:r.d<6&&state.week.dias[r.d+1].pace.corrida?state.week.dias[r.d+1].pace.corrida.titulo:"nada especial"};
  const prompt=`${promptBase(who)}
 
 Tarefa: refaça SOMENTE este treino do atleta "${who}". Não altere nada mais da semana.
@@ -1252,7 +1370,9 @@ Pedido do atleta: ${r.pedido||"variar mantendo o mesmo objetivo"}
 
 Responda APENAS com JSON: {"sessao":Sessao}. ${SESSAO_SPEC}. Português do Brasil; cite zonas como Z1, Z2 etc.`;
  r.loading=true;r.err="";render();
- try{const out=await geminiJson(prompt,null);if(!out||!okS(out.sessao))throw {code:"formato"};r.draft=out.sessao}
+ const f=faixa(who,r.d,day);
+ const checar=out=>{if(!out||!okS(out.sessao))throw {code:"formato"};return foraDaFaixa([{s:out.sessao,who,d:r.d,day,rot:DIAS[r.d]}])};
+ try{const {out,fora}=await iaComKPI(prompt+(f?`\nFaixa de tempo real desta sessão: ${f[0]} a ${f[1]} min.`:""),null,checar);r.draft=fixMin(out.sessao);r.err=fora.length?`Mesmo depois do ajuste, o tempo real ficou fora da faixa (${fora[0]}). Você pode usar assim ou tentar de novo.`:""}
  catch(e){r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
  finally{r.loading=false;if(state.redo===r)render()}
 }
@@ -1268,12 +1388,13 @@ async function gerar(){
  const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
  const n=(parseInt((state.week.nome||"").replace(/\D/g,""))||1)+1;
  const runs=[...document.querySelectorAll("[data-run]")].map((t,i)=>t.value.trim()?`${DIAS[i]}: ${t.value.trim()}`:null).filter(Boolean);
- const prompt=`Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Programe a semana de dois atletas, de segunda a sábado (domingo é descanso). Use os marcadores {power} e {pace} quando precisar citar os atletas no texto, nunca nomes.
+ const prompt=`Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Programe a semana de dois atletas, de segunda a domingo, com o domingo regenerativo. Use os marcadores {power} e {pace} quando precisar citar os atletas no texto, nunca nomes.
 
-Atleta "power": quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação, de segunda a sexta; sábado é opcional (pode acompanhar o longão do {pace} em Z1–Z2). Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine. Pelo menos um dia leve de Z2 por semana.
-Atleta "pace": corredora com treinos de corrida definidos pelo treinador dela (não invente corridas). Ela gosta de treinar bem e com volume consistente: os treinos dela devem ter duração média mínima de 50 a 60 minutos por dia. Nos dias SEM corrida, tanto a opção "a" (musculação: cadeia posterior, superiores, core, estabilidade de joelho e quadril, poupando pernas pesadas na véspera de corrida forte ou longão) quanto a opção "b" (funcional, mobilidade e core) devem ter entre 50 e 60 minutos bem estruturados. Nos dias COM corrida, "a" e "b" são complementos de 15 a 20 minutos antes ou depois da corrida, fazendo com que a sessão completa do dia (corrida + complemento) também feche na faixa de 55 a 75 minutos.
+${PERFIL.power} No sábado, o power pode acompanhar o longão do {pace} em Z1–Z2.
+${PERFIL.pace} Corridas: só as da planilha (não invente corridas).
 Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
 Regras: evite alta intensidade dos dois no mesmo dia quando possível; meta perto de 80% do trabalho aeróbico em Z1–Z2; progrida a carga do power em até 10%.
+${KPI_SPEC}
 
 Corridas da planilha para a próxima semana:
 ${runs.length?runs.join("\n"):"Nenhuma informada: use corrida = null em todos os dias."}
@@ -1287,13 +1408,19 @@ Biblioteca de treinos do treinador (prefira usar e adaptar estes treinos, manten
 ${libForPrompt()}
 Ajustes pedidos: ${document.getElementById("ajustes").value.trim()||"nenhum"}
 
-Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Semana ${n}","fase":"...","foco":"...","dias":[6 itens, segunda a sábado]}. Cada dia: {"nota":"texto curto ou vazio","power":Sessao,"pace":{"corrida":Corrida ou null,"a":Sessao,"b":Sessao}}. Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número,"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado"}]}],"nota"}. Corrida: {"titulo","desc":"1 frase sobre o objetivo","km":número,"min":número estimado,"rpe":1-10,"zonas":[5 números de minutos],"passos":[textos curtos com a zona, sem paces],"obs"}. Todo exercício de musculação, funcional ou estação deve ter "d". Transcreva as corridas da planilha fielmente nos passos. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
+Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Semana ${n}","fase":"...","foco":"...","dias":[7 itens, segunda a domingo]}. Cada dia: {"nota":"texto curto ou vazio","power":Sessao,"pace":{"corrida":Corrida ou null,"a":Sessao,"b":Sessao}}. ${SESSAO_SPEC}. Corrida: {"titulo","desc":"1 frase sobre o objetivo","km":número,"min":número estimado,"rpe":1-10,"zonas":[5 números de minutos],"passos":[textos curtos com a zona, sem paces],"obs"}. Todo exercício de musculação, funcional ou estação deve ter "d". Transcreva as corridas da planilha fielmente nos passos. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
  btn.disabled=true;stop.hidden=false;st.textContent="Montando a semana com o Gemini. Pode levar um ou dois minutos…";ctl=new AbortController();
+ const checar=w=>{
+  if(!valid(w))throw {code:"formato"};
+  w.dias.forEach(d=>{if(!d.pace.corrida)d.pace.corrida=null});
+  return foraDaFaixa(w.dias.flatMap((d,i)=>[{s:d.power,who:"power",d:i,day:d,rot:`${DIAS[i]} (power)`},
+   ...["a","b"].map(o=>({s:d.pace[o],who:"pace",d:i,day:d,rot:`${DIAS[i]} opção ${o} (pace)`}))]));
+ };
  try{
-  const w=await geminiJson(prompt,null,ctl.signal);
-  if(!valid(w)) throw {code:"formato"};
-  w.id=nextId(state.week.id);w.nome=`Semana ${n}`;w.dias.forEach(d=>{if(!d.pace.corrida)d.pace.corrida=null});
-  state.draft=w;st.textContent="Pronto. Confira o resumo abaixo e confirme.";document.getElementById("prev").innerHTML=prevHTML(w);
+  const {out:w,fora}=await iaComKPI(prompt,ctl.signal,checar,k=>{st.textContent=`Ajustando o tempo real de ${k} ${k>1?"sessões":"sessão"} (segunda passada)…`});
+  w.id=nextId(state.week.id);w.nome=`Semana ${n}`;
+  w.dias.forEach(d=>[d.power,d.pace.a,d.pace.b].forEach(fixMin));
+  state.draft=w;st.textContent="Pronto. Confira o resumo abaixo e confirme."+avisoFora(fora).replace(/\{power\}|\(power\)/g,`(${NP()})`).replace(/\(pace\)/g,`(${NA()})`);document.getElementById("prev").innerHTML=prevHTML(w);
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return;}
   const m={
@@ -1339,7 +1466,7 @@ async function importRunSheet(file){
  if(st)st.textContent="Lendo a planilha de corrida com o Gemini…";
  try{
   const input=await readInput(file);
-  const r=await ask(`Leia esta planilha de corrida semanal e extraia as corridas por dia da semana (0=Segunda, 1=Terça, 2=Quarta, 3=Quinta, 4=Sexta, 5=Sábado). Responda APENAS JSON: {"dias":["texto completo da corrida de segunda ou vazio","terça","quarta","quinta","sexta","sábado"]}. Transcreva distâncias, tempos, zonas e observações fielmente.`,input);
+  const r=await ask(`Leia esta planilha de corrida semanal e extraia as corridas por dia da semana (0=Segunda, 1=Terça, 2=Quarta, 3=Quinta, 4=Sexta, 5=Sábado, 6=Domingo). Responda APENAS JSON: {"dias":["texto completo da corrida de segunda ou vazio","terça","quarta","quinta","sexta","sábado","domingo"]}. Transcreva distâncias, tempos, zonas e observações fielmente.`,input);
   const arr=(r&&Array.isArray(r.dias))?r.dias:[];
   document.querySelectorAll("[data-run]").forEach((el,i)=>{if(arr[i])el.value=String(arr[i]).trim()});
   if(st)st.textContent="Planilha lida! Confira os campos acima e clique em Gerar próxima semana.";
@@ -1444,7 +1571,7 @@ async function importRes(file,who){
   for(const [wk,arr] of Object.entries(byWeek)){
    const path="resultados/v2-"+wk;const cur=wk===state.week.id?state.res:((await load(path))||{pace:{},power:{}});
    cur[who]=cur[who]||{};
-   arr.forEach(a=>{const d=(new Date(a.data+"T12:00:00").getDay()+6)%7;if(d>5)return;const l=cur[who][d]=cur[who][d]||[];
+   arr.forEach(a=>{const d=(new Date(a.data+"T12:00:00").getDay()+6)%7;const l=cur[who][d]=cur[who][d]||[];
     const key=x=>[x.data,x.km,x.tempo].join("|");if(l.some(x=>key(x)===key(a)))return;l.push(a);
     if(wk===state.week.id){nCur++;const day=state.week.dias[d];
      if(who==="pace"){if(a.run&&day.pace.corrida)state.log.chk[d+":pace:corrida"]=true;else state.log.chk[d+":pace:treino"]=true}
@@ -1600,8 +1727,10 @@ view.addEventListener("click",e=>{
    const lines=box.querySelector('[data-ef="itens"]').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    if(slot==="corrida"){target.passos=lines;}
    else{
+    /* exercícios que não mudaram mantêm descrição e números do KPI; blocos mantêm as voltas */
+    const velhos=new Map(),voltas=new Map();(target.blocos||[]).forEach(b=>{if(b.voltas)voltas.set(b.nome,b.voltas);(b.itens||[]).forEach(i=>{if(i&&typeof i==="object")velhos.set(i.t,i)})});
     const bls=[];let cur={nome:"Treino",itens:[]};
-    lines.forEach(ln=>{if(ln.startsWith("#")){if(cur.itens.length)bls.push(cur);cur={nome:ln.replace(/^#+\s*/,"")||"Bloco",itens:[]}}else cur.itens.push(ln)});
+    lines.forEach(ln=>{if(ln.startsWith("#")){if(cur.itens.length)bls.push(cur);const nome=ln.replace(/^#+\s*/,"")||"Bloco";cur={nome,itens:[]};if(voltas.has(nome))cur.voltas=voltas.get(nome)}else cur.itens.push(velhos.get(ln)||ln)});
     if(cur.itens.length)bls.push(cur);
     target.blocos=bls;
    }
