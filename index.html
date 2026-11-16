@@ -118,6 +118,44 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .chk input{accent-color:var(--ok);width:16px;height:16px;margin:0}
 .chk label:has(input:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
 .chk .sub{width:100%;font-size:.8rem;color:var(--muted);margin-top:8px}
+.aval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.aval{border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;background:var(--surface);min-width:0}
+.aval.pace{border-top:3px solid var(--pace)} .aval.power{border-top:3px solid var(--power)}
+.rsec .aval{border:0;padding:0;margin-bottom:14px}
+.aval-top{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.aval-n{font-weight:800;font-size:1.02rem}
+.ring{--c:var(--ok);flex:none;width:68px;height:68px;border-radius:50%;display:grid;place-content:center;text-align:center;background:radial-gradient(closest-side,var(--surface) 78%,transparent 80%),conic-gradient(var(--c) calc(var(--p)*1%),var(--line-2) 0)}
+.ring b{font-size:1.35rem;line-height:1;font-variant-numeric:tabular-nums} .ring span{font-size:.66rem;color:var(--muted)}
+.ring.mid{--c:var(--warn)} .ring.low{--c:#C0392B}
+.aval-m{display:grid;gap:6px}
+.am{--c:var(--ok);border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface-2)}
+.am.mid{--c:var(--warn)} .am.low{--c:#C0392B}
+.am summary{position:relative;display:flex;justify-content:space-between;gap:8px;padding:8px 10px 11px;cursor:pointer;font-size:.86rem;list-style:none}
+.am summary::-webkit-details-marker{display:none}
+.am summary b{color:var(--c);white-space:nowrap}
+.am summary i{position:absolute;left:10px;bottom:4px;height:3px;border-radius:2px;background:var(--c);max-width:calc(100% - 20px)}
+.am p{margin:0;padding:0 10px 9px;font-size:.82rem;color:var(--muted)}
+.aval-fb{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+.aval-fb h4,.coach h4{margin:0 0 4px;font-size:.84rem}
+.aval-fb ul,.coach ul{margin:0;padding-left:18px;font-size:.86rem} .aval-fb li,.coach li{margin:3px 0}
+.coach{border:1px dashed var(--line);border-radius:var(--r-md);padding:12px 14px;margin-bottom:14px;background:var(--surface-2)}
+.coach.pace{border-color:color-mix(in srgb,var(--pace) 45%,var(--line))} .coach.power{border-color:color-mix(in srgb,var(--power) 45%,var(--line))}
+.coach-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.coach p{margin:4px 0 8px;font-size:.9rem}
+.rbar{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:0 0 12px}
+.rbar select{min-width:0;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 12px;font-weight:700;font-size:.9rem;color:var(--ink)}
+.menu-nav:disabled{opacity:.4;cursor:default}
+.rsec.pace{border-top:3px solid var(--pace)} .rsec.power{border-top:3px solid var(--power)}
+.rhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
+.rtiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.rtile{border:1px solid var(--line-2);background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.rtile .rl{font-size:.76rem;color:var(--muted);font-weight:650}
+.rtile>b{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.dl{font-size:.74rem;color:var(--muted)} .dl.up{color:var(--ok)} .dl.down{color:var(--warn)}
+table.rtab{width:100%;border-collapse:collapse;font-size:.86rem;min-width:520px}
+table.rtab th,table.rtab td{padding:8px 6px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+table.rtab th{font-size:.76rem;color:var(--muted)}
+table.rtab td:first-child{white-space:nowrap} table.rtab td:first-child .mt{display:block}
 .kpi{border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--surface));color:var(--ok);border-radius:999px;padding:1px 9px;font-size:.8rem}
 .kpi b{color:inherit}
 .kpi.warn{border-color:color-mix(in srgb,var(--warn) 50%,var(--line));background:color-mix(in srgb,var(--warn) 10%,var(--surface));color:var(--warn)}
@@ -345,6 +383,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
     <button role="tab" data-tab="dia" aria-selected="true">Dia</button>
     <button role="tab" data-tab="semana" aria-selected="false">Semana</button>
     <button role="tab" data-tab="painel" aria-selected="false">Painel</button>
+    <button role="tab" data-tab="resultados" aria-selected="false">Resultados</button>
     <button role="tab" data-tab="nutricao" aria-selected="false">Plano alimentar</button>
     <button role="tab" data-tab="biblioteca" aria-selected="false">Biblioteca</button>
     <button role="tab" data-tab="nova" aria-selected="false">Nova semana</button>
@@ -406,6 +445,12 @@ window.dbReady = new Promise(async (resolve) => {
       },
       async listLib() {
         const coll = collection(db, "artifacts", projectId, "public", "data", "biblioteca");
+        const q = await getDocs(coll);
+        return q.docs.map(d => ({ ...d.data(), id: d.id }));
+      },
+      /* todas as semanas com resultados importados (Garmin, prints, PDF), para o histórico */
+      async listRes() {
+        const coll = collection(db, "artifacts", projectId, "public", "data", "resultados");
         const q = await getDocs(coll);
         return q.docs.map(d => ({ ...d.data(), id: d.id }));
       },
@@ -693,6 +738,7 @@ const state={
  currentId:"",
  hist:null,
  histLoading:false,
+ rh:{weeks:null,loaded:false,loading:false,sel:null,who:"ambos"},
  readOnly:false,
  draft:null,
  dietDraft:null,
@@ -802,7 +848,7 @@ function render(){
   r.innerHTML=days>0?`<span class="n">${Math.ceil(days/7)}</span>semanas para o Hyrox Fortaleza`:`<span class="n">0</span>Hyrox Fortaleza`;}
  else r.innerHTML=`<span class="n">2027</span>Hyrox Fortaleza`;
  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===state.tab));
- ({dia:vDia,semana:vSemana,painel:vPainel,nutricao:vNutri,biblioteca:vBib,nova:vNova})[state.tab](document.getElementById("view"));
+ ({dia:vDia,semana:vSemana,painel:vPainel,resultados:vRes,nutricao:vNutri,biblioteca:vBib,nova:vNova})[state.tab](document.getElementById("view"));
 }
 
 function item(i,pace){const t=typeof i==="string"?i:(i&&i.t)||"",d=(i&&typeof i==="object"&&i.d)||howOf(t);return `<li>${rich(t,pace)}${d?`<span class="how">${esc(nm(d))}</span>`:""}</li>`}
@@ -944,13 +990,13 @@ function vSemana(v){
  <div class="legend">${ZN.map((z,i)=>`<span><i style="background:${zc(i)}"></i>${esc(ZD[i])}</span>`).join("")}</div>`;
 }
 
-function chart(series,unit){
+function chart(series,unit,labels){
  const nd=Math.max(...series.map(s=>s.values.length)),W=560,H=200,pl=34,pb=24,pt=10,iw=W-pl-8,ih=H-pb-pt,gw=iw/nd,bw=Math.min(22,(gw-14)/series.length);
  const m=Math.max(1,...series.flatMap(s=>s.values)),st=m>200?100:m>50?25:m>10?5:2,top=Math.ceil(m/st)*st;
  let g="";for(let k=0;k<=4;k++){const y=pt+ih-ih*k/4;g+=`<line x1="${pl}" x2="${W-8}" y1="${y}" y2="${y}" stroke="var(--line-2)"/><text x="${pl-6}" y="${y+4}" text-anchor="end">${Math.round(top*k/4)}</text>`}
  let b="";for(let i=0;i<nd;i++){const x0=pl+gw*i+(gw-bw*series.length-4*(series.length-1))/2;
   series.forEach((s,j)=>{const v=s.values[i]||0,h=ih*v/top;b+=`<rect x="${x0+j*(bw+4)}" y="${pt+ih-h}" width="${bw}" height="${h}" rx="4" fill="${s.color}"><title>${esc(s.name)}: ${num(v)} ${unit}</title></rect>`});
-  b+=`<text x="${pl+gw*i+gw/2}" y="${H-6}" text-anchor="middle">${AB[i]}</text>`}
+  b+=`<text x="${pl+gw*i+gw/2}" y="${H-6}" text-anchor="middle">${esc((labels||AB)[i])}</text>`}
  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Gráfico por dia">${g}${b}</svg><div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`;
 }
 function zoneBlock(name,color,z){const t=sum(z),low=t?(z[0]+z[1])/t*100:0;
@@ -980,6 +1026,8 @@ function vPainel(v){
   <div class="btns"><button class="btn sm" data-act="imp-res" data-who="pace">Importar resultados da ${esc(NA())}</button><button class="btn sm ghost" data-act="imp-res" data-who="power">Importar do ${esc(NP())}</button></div></div>
  <div class="upl" id="upl-res"></div>
  <div class="grid">
+  <div class="panel wide"><div class="tool" style="margin:0 0 10px"><div><h3 style="margin:0">Avaliação da semana</h3><p class="sub" style="margin:2px 0 0">Como está o aproveitamento até agora. Toque em cada item para ver o detalhe.</p></div><button class="btn sm ghost" data-tab-go="resultados">Histórico e análise do treinador</button></div>
+   <div class="aval-grid">${["pace","power"].map(w=>avalSemanaHTML(state.week,state.log,state.res,w)).join("")}</div></div>
   <div class="panel wide"><h3>Resultados da semana</h3><p class="sub">Atividades importadas do Garmin ou de outro app (CSV, PDF, foto ou print). Cada uma é ligada ao dia certo pela data.</p>
    ${all.length?all.map(a=>`<div class="row"><span><b>${AB[a.i]}</b> <span class="who-tag ${a.w}">${esc(quem(a.w))}</span> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" em "+esc(a.tempo):""}${a.pace?", pace "+esc(a.pace):""}${a.fc?", FC "+esc(a.fc):""}</span></div>`).join(""):`<p class="sub" style="margin:0">Nenhum resultado importado nesta semana ainda.</p>`}</div>
   <div class="panel"><h3>Corrida</h3><p class="sub">Km por dia. ${esc(NA())}: ${num(sum(kmPa).toFixed(1))} km planejados, ${num(sum(rkPa).toFixed(1))} km realizados. ${esc(NP())}: ${num(sum(kmPo).toFixed(1))} km planejados.</p>${chart([{name:NA()+" planejado",color:"var(--pace)",values:kmPa},{name:NA()+" realizado",color:"var(--ok)",values:rkPa},{name:NP()+" planejado",color:"var(--power)",values:kmPo}],"km")}</div>
@@ -1057,6 +1105,185 @@ function histPanel(){
   <td>${st.sonoPo} / ${st.sonoPa} dias</td><td>${pct(st.refPo)} / ${pct(st.refPa)}</td></tr>`).join("")}
  </tbody></table></div>${trend}
  <div class="actions"><button class="btn sm ghost" data-act="hist-reload">Atualizar histórico</button></div></div>`;
+}
+
+/* ===== Aba Resultados: histórico semanal dos resultados importados ===== */
+const addDias=(id,n)=>{const d=new Date(id+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const semLabel=id=>{const a=new Date(id+"T12:00:00"),b=new Date(addDias(id,6)+"T12:00:00"),nmw=(state.weeks.find(w=>w.id===id)||{}).nome;return `${fmt(a)} a ${fmt(b)}${nmw?` (${nmw})`:""}`};
+async function loadRH(){
+ const rh=state.rh;if(rh.loading)return;rh.loading=true;
+ const weeks={};
+ try{
+  if(window.fb&&window.fb.ready&&window.fb.listRes){
+   for(const x of await window.fb.listRes()){if(!/^v2-\d{4}-\d{2}-\d{2}$/.test(x.id))continue;weeks[x.id.slice(3)]={res:{pace:x.pace||{},power:x.power||{}}}}
+  }else{
+   for(const w of state.weeks){const r=lsGet("resultados/v2-"+w.id);if(r)weeks[w.id]={res:{pace:r.pace||{},power:r.power||{}}}}
+  }
+ }catch(e){console.warn("Resultados:",e)}
+ weeks[state.week.id]={res:state.res};
+ rh.weeks=weeks;rh.loading=false;rh.loaded=true;
+ const ids=resIds();
+ if(!rh.sel||!weeks[rh.sel]){const prev=addDias(mondayOf(new Date().toISOString().slice(0,10)),-7);rh.sel=ids.includes(prev)?prev:(ids[0]||state.week.id)}
+ await loadSemRH(rh.sel);
+}
+/* plano e marcações da semana escolhida, para comparar o planejado com o realizado */
+async function loadSemRH(id){
+ const w=state.rh.weeks[id]||(state.rh.weeks[id]={res:{pace:{},power:{}}});
+ if(!w.plan){
+  if(id===state.week.id){w.plan=state.week;w.log=state.log}
+  else{try{w.plan=await load("semanas/v2-"+id);w.log=await load("registro/v2-"+id)}catch(e){}w.plan=w.plan||{};w.log=w.log||{}}
+  if(w.plan&&Array.isArray(w.plan.dias))valid(w.plan);
+  try{w.analise=(await load("analises/v2-"+id))||{}}catch(e){w.analise={}}
+ }
+ if(state.tab==="resultados")render();
+}
+const temAtv=r=>["pace","power"].some(w=>Object.values((r&&r[w])||{}).some(l=>(l||[]).length));
+const resIds=()=>Object.keys(state.rh.weeks||{}).filter(id=>id===state.rh.sel||temAtv(state.rh.weeks[id].res)).sort().reverse();
+function statsAtl(res,who){
+ const acts=Object.entries((res&&res[who])||{}).flatMap(([d,l])=>(l||[]).map(a=>({...a,d:+d})));
+ const runs=acts.filter(a=>a.run),km=sum(runs.map(a=>a.km));
+ const seg=sum(acts.map(a=>secOf(a.tempo))),segRun=sum(runs.filter(a=>+a.km).map(a=>secOf(a.tempo))),kmT=sum(runs.filter(a=>secOf(a.tempo)).map(a=>a.km));
+ const fcs=acts.filter(a=>+a.fc&&secOf(a.tempo)),fc=fcs.length?Math.round(sum(fcs.map(a=>+a.fc*secOf(a.tempo)))/sum(fcs.map(a=>secOf(a.tempo)))):0;
+ return {acts,n:acts.length,km,seg,pace:kmT&&segRun?segRun/kmT:0,fc};
+}
+/* ===== Avaliação da semana (estilo apps de alto rendimento: cumprimento do plano em cores, nota e feedback) =====
+   ateDia: na semana em andamento, avalia só até hoje. Cores: verde a partir de 80%, amarelo de 50% a 79%, vermelho abaixo de 50%. */
+function avaliar(plan,log,res,who,ateDia){
+ const D=(plan&&Array.isArray(plan.dias))?plan.dias:[],chk=(log&&log.chk)||{},opt=(log&&log.opt)||{},dst=(log&&log.dietStatus)||{};
+ const nd=Math.min(D.length,ateDia>=0?ateDia+1:D.length),I=[...Array(nd).keys()],pa=who==="pace";
+ const meals=pa?MEALS_JOANNA:DIET_EWERTON.refeicoes,st=statsAtl(res,who);
+ const m=[];
+ /* treinos */
+ const tPlan=pa?I:I.filter(i=>D[i].power&&!/opcional/i.test((D[i].power.titulo||"")+" "+(D[i].power.tipo||"")));
+ const tDone=tPlan.filter(i=>chk[`${i}:${who}:treino`]),tMiss=tPlan.filter(i=>!chk[`${i}:${who}:treino`]);
+ m.push({k:"treino",lbl:pa?"Musculação e funcional":"Treinos",feito:tDone.length,total:tPlan.length,det:tMiss.length?`Faltou: ${tMiss.map(i=>`${AB[i]} (${nm(pa?(D[i].pace[opt[i]||"a"]||D[i].pace.a).titulo:D[i].power.titulo)})`).join(", ")}`:"Todos os treinos do período foram marcados como feitos."});
+ /* corrida (Joanna): sessões feitas e km realizados contra o planejado */
+ let kmPlan=0,kmReal=0,longo=null;
+ if(pa){
+  const rI=I.filter(i=>D[i].pace&&D[i].pace.corrida),rDone=rI.filter(i=>chk[`${i}:pace:corrida`]);
+  kmPlan=sum(rI.map(i=>+D[i].pace.corrida.km));kmReal=sum(st.acts.filter(a=>a.run&&a.d<nd).map(a=>a.km));
+  const li=rI.find(i=>/long/i.test(D[i].pace.corrida.titulo||""));if(li!==undefined)longo={dia:li,feito:!!chk[`${li}:pace:corrida`]};
+  if(rI.length)m.push({k:"corrida",lbl:"Corridas da planilha",feito:rDone.length,total:rI.length,det:rI.map(i=>{const real=sum(st.acts.filter(a=>a.run&&a.d===i).map(a=>a.km));return `${AB[i]} ${D[i].pace.corrida.titulo}: ${num(D[i].pace.corrida.km)} km planejados, ${real?num(real.toFixed(2))+" km realizados":chk[`${i}:pace:corrida`]?"feita (sem resultado importado)":"não feita"}`}).join(" · ")});
+  if(kmPlan&&kmReal)m.push({k:"km",lbl:"Volume de corrida",feito:+kmReal.toFixed(1),total:+kmPlan.toFixed(1),un:"km",det:`${num(kmReal.toFixed(1))} de ${num(kmPlan.toFixed(1))} km planejados. Faixa ideal: 80% a 120% do planejado.`});
+ }
+ /* alimentação, água e sono */
+ const ref=I.reduce((a,i)=>a+meals.filter(x=>chk[`${i}:${who}:${x.k}`]).length,0),refT=meals.length*nd;
+ const off=I.filter(i=>dst[`${i}:${who}`]==="off"),parc=I.filter(i=>dst[`${i}:${who}`]==="partial");
+ m.push({k:"dieta",lbl:"Alimentação (refeições do plano)",feito:ref,total:refT,det:`${ref} de ${refT} refeições marcadas.${off.length?` Fora da dieta: ${off.map(i=>AB[i]).join(", ")}.`:""}${parc.length?` Parcial: ${parc.map(i=>AB[i]).join(", ")}.`:""}`});
+ const ag=I.filter(i=>chk[`${i}:${who}:agua`]).length,so=I.filter(i=>chk[`${i}:${who}:sono`]).length;
+ m.push({k:"agua",lbl:"Água: meta batida",feito:ag,total:nd,un:"dias",det:`Meta batida em ${ag} de ${nd} dias.`});
+ m.push({k:"sono",lbl:"Sono de 7h ou mais",feito:so,total:nd,un:"dias",det:`${so} de ${nd} noites com 7h ou mais.`});
+ m.forEach(x=>{x.pct=x.total?Math.round(x.feito/x.total*100):0;if(x.k==="km")x.pct=Math.round(Math.min(x.feito/x.total,2)*100)});
+ /* nota geral ponderada: treino pesa mais; volume de corrida conta pelo quanto ficou perto de 100% */
+ const peso={treino:pa?25:40,corrida:25,km:10,dieta:pa?20:30,agua:pa?10:15,sono:pa?10:15},adh=x=>x.k==="km"?Math.max(0,100-Math.abs(100-x.pct)):Math.min(100,x.pct);
+ const pt=m.filter(x=>x.total),nota=pt.length?Math.round(sum(pt.map(x=>adh(x)*peso[x.k]))/sum(pt.map(x=>peso[x.k]))):0;
+ /* feedback */
+ const fortes=[],melhorar=[],g=k=>m.find(x=>x.k===k);
+ const T=g("treino");if(T.total){if(T.pct>=90)fortes.push(`Consistência excelente: ${T.feito} de ${T.total} treinos feitos.`);else if(T.pct<70)melhorar.push(`${T.total-T.feito>1?`Faltaram ${T.total-T.feito} treinos`:"Faltou 1 treino"}. Se a agenda apertar, priorize os dias de força e use o "Refazer com IA" para encurtar a sessão em vez de pular.`)}
+ if(pa){const C=g("corrida");if(C){if(C.pct===100)fortes.push("Todas as corridas da planilha foram feitas.");else melhorar.push(`${C.total-C.feito} ${C.total-C.feito>1?"corridas da planilha ficaram":"corrida da planilha ficou"} sem marcar. As corridas são a prioridade da semana.`)}
+  if(longo)(longo.feito?fortes:melhorar).push(longo.feito?"Longão concluído: é o treino que mais constrói resistência.":"O longão não foi feito. Se perder, tente encaixar no domingo em ritmo leve.");
+  const K=g("km");if(K){if(K.pct<80)melhorar.push(`Volume de corrida em ${K.pct}% do planejado (${num(K.feito)} de ${num(K.total)} km).`);else if(K.pct>120)melhorar.push(`Volume de corrida em ${K.pct}% do planejado: acima do previsto, cuidado com sobrecarga.`);else fortes.push(`Volume de corrida na medida: ${K.pct}% do planejado.`)}
+  if(!st.acts.some(a=>a.run)&&(g("corrida")||{}).feito)melhorar.push("Importe os resultados do Garmin para comparar km, pace e FC com o planejado.")}
+ const Dt=g("dieta");if(Dt.total){if(Dt.pct>=80)fortes.push(`Boa adesão à dieta: ${Dt.pct}% das refeições.`);else melhorar.push(`Alimentação em ${Dt.pct}% das refeições marcadas.${off.length?` Dias fora: ${off.map(i=>AB[i]).join(", ")}.`:""} Planejar as refeições do dia seguinte ajuda.`)}
+ const A=g("agua");if(A.pct>=80)fortes.push("Hidratação em dia na maior parte da semana.");else melhorar.push(`Água: meta batida só em ${A.feito} de ${A.total} dias. Deixe uma garrafa à vista e use os botões de +500 ml.`);
+ const Sn=g("sono");if(Sn.pct<60)melhorar.push(`Sono de 7h ou mais em só ${Sn.feito} de ${Sn.total} noites: a recuperação dos treinos depende disso.`);else if(Sn.pct>=80)fortes.push("Sono bem cuidado na semana.");
+ return {m,nota,fortes,melhorar,nd,parcial:ateDia>=0&&nd<D.length,st};
+}
+const cor=p=>p>=80?"ok":p>=50?"mid":"low";
+/* até que dia avaliar a semana: semana em andamento conta só os dias já encerrados (até ontem) */
+function ateQuando(plan){
+ if(!plan||plan.id!==state.week.id)return -1;
+ const ti=todayIdx();if(ti>0)return ti-1;if(ti===0)return "inicio";
+ return new Date()<dt(0)?"futuro":-1;
+}
+function avalSemanaHTML(plan,log,res,who){
+ const q=ateQuando(plan);
+ if(q==="inicio"||q==="futuro")return `<div class="aval ${who}"><div class="aval-n">${esc(quem(who))}</div><p class="mt" style="margin:6px 0 0">${q==="inicio"?"A semana começou hoje: a avaliação aparece a partir de amanhã, com os dias já encerrados. A semana passada está na aba Resultados.":"Esta semana ainda não começou."}</p></div>`;
+ return avaliacaoHTML(avaliar(plan,log,res,who,q),who);
+}
+function avaliacaoHTML(av,who){
+ const n=av.nota,nivel=n>=85?"Semana excelente":n>=70?"Boa semana":n>=50?"Semana regular":"Semana abaixo do plano";
+ return `<div class="aval ${who}">
+  <div class="aval-top"><div class="ring ${cor(n)}" style="--p:${n}"><b>${n}</b><span>nota</span></div>
+   <div><div class="aval-n">${esc(quem(who))}: ${nivel}</div><div class="mt">${av.parcial?`Avaliação parcial, até ${DIAS[av.nd-1].toLowerCase()}.`:"Semana completa."} Cumprimento do plano: verde a partir de 80%, amarelo de 50% a 79%, vermelho abaixo de 50%.</div></div></div>
+  <div class="aval-m">${av.m.filter(x=>x.total).map(x=>`<details class="am ${cor(x.k==="km"?Math.max(0,100-Math.abs(100-x.pct)):x.pct)}"><summary><span>${esc(x.lbl)}</span><b>${x.k==="km"?`${num(x.feito)} de ${num(x.total)} km`:`${x.feito} de ${x.total}${x.un?" "+x.un:""}`} · ${x.pct}%</b><i style="width:${Math.min(100,x.pct)}%"></i></summary><p>${esc(x.det)}</p></details>`).join("")}</div>
+  <div class="aval-fb">${av.fortes.length?`<div><h4>Pontos fortes</h4><ul>${av.fortes.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}${av.melhorar.length?`<div><h4>O que melhorar</h4><ul>${av.melhorar.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}</div>
+ </div>`;
+}
+function deltaTxt(v,ant,fmtv,menorMelhor){
+ if(ant===null||ant===undefined||!v||!ant)return "";
+ const d=v-ant;if(Math.abs(d)<1e-9)return `<span class="dl">= semana anterior</span>`;
+ const bom=menorMelhor?d<0:d>0;return `<span class="dl ${bom?"up":"down"}">${d>0?"▲":"▼"} ${fmtv(Math.abs(d))} vs semana anterior</span>`;
+}
+/* análise do treinador pela IA, salva na nuvem para os dois verem */
+async function iaAnalise(who){
+ const rh=state.rh,id=rh.sel,W=rh.weeks[id];if(!W)return;
+ const q=ateQuando(W.plan),av=avaliar(W.plan||{},W.log,W.res,who,typeof q==="number"?q:0),ant=rh.weeks[addDias(id,-7)];
+ const sa=ant?statsAtl(ant.res,who):null,D=(W.plan&&W.plan.dias)||[];
+ const dados={atleta:who,semana:semLabel(id),avaliacao_parcial:av.parcial,nota_do_app:av.nota,
+  metricas:av.m.filter(x=>x.total).map(x=>({item:x.lbl,feito:x.feito,total:x.total,percentual:x.pct,detalhe:x.det})),
+  resultados_importados:av.st.acts.map(a=>({dia:DIAS[a.d],tipo:a.tipo,titulo:a.titulo,km:a.km,tempo:a.tempo,pace:a.pace,fc:a.fc})),
+  semana_anterior:sa&&sa.n?{km:+sa.km.toFixed(1),pace_medio:sa.pace?hms(sa.pace):"",fc_media:sa.fc}:null,
+  plano:D.map((d,i)=>({dia:DIAS[i],treino:who==="power"?d.power&&d.power.titulo:d.pace&&[d.pace.a&&d.pace.a.titulo,d.pace.b&&d.pace.b.titulo].join(" ou "),corrida:who==="pace"&&d.pace&&d.pace.corrida?`${d.pace.corrida.titulo} ${d.pace.corrida.km} km: ${(d.pace.corrida.passos||[]).join("; ")}`:null}))};
+ const prompt=`Você é treinador de alta performance (metodologia HWPO) e escreve o feedback semanal de um atleta, como nos apps de treino de elite: direto, específico, com números e sem enrolação. Use os marcadores {power} e {pace} para citar os atletas, nunca nomes. ${PERFIL[who]}
+Analise a semana com os dados abaixo: cumprimento dos treinos${who==="pace"?", corridas da planilha (km, pace e FC realizados contra o planejado)":""}, alimentação, água e sono, e compare com a semana anterior quando houver. Se faltar dado (resultado não importado), diga o que importar. ${av.parcial?"A semana ainda está em andamento: avalie só até hoje.":""}
+Dados (JSON): ${JSON.stringify(dados)}
+Responda APENAS JSON: {"resumo":"2 frases com a avaliação geral","fortes":["até 3 pontos fortes com números"],"melhorar":["até 3 pontos a melhorar, cada um com uma ação prática"],"foco":["até 2 focos para a próxima semana"]}. Português do Brasil.`;
+ rh.iaLoading=id+who;rh.iaErr=null;render();
+ try{
+  const r=await geminiJson(prompt,null);
+  if(!r||typeof r.resumo!=="string")throw {code:"formato"};
+  const an={resumo:r.resumo,fortes:(r.fortes||[]).slice(0,3),melhorar:(r.melhorar||[]).slice(0,3),foco:(r.foco||[]).slice(0,2),quando:new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})};
+  W.analise={...(W.analise||{}),[who]:an};
+  lsSet("analises/v2-"+id,W.analise);
+  if(window.fb&&window.fb.ready&&!state.readOnly)window.fb.merge("analises/v2-"+id,{[who]:an}).then(syncOk).catch(fbFail);
+ }catch(e){rh.iaErr={k:id+who,t:({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta da IA veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar a análise agora. Tente de novo."}}
+ finally{rh.iaLoading=null;if(state.tab==="resultados")render()}
+}
+function vRes(v){
+ const rh=state.rh;
+ if(!rh.loaded){v.innerHTML=`<h2 class="sec">Resultados</h2><p class="lead">Carregando o histórico de resultados…</p>`;loadRH();return}
+ const ids=resIds(),id=rh.sel,W=rh.weeks[id]||{res:{pace:{},power:{}}},ant=rh.weeks[addDias(id,-7)];
+ const plan=W.plan||{},chk=(W.log&&W.log.chk)||{},D=Array.isArray(plan.dias)?plan.dias:[];
+ const who=rh.who||"ambos",lista=who==="ambos"?["pace","power"]:[who];
+ const i=ids.indexOf(id);
+ const bloco=w=>{
+  const s=statsAtl(W.res,w),sa=ant&&temAtv(ant.res)?statsAtl(ant.res,w):null;
+  const kmPlan=w==="pace"?sum(D.map(x=>x.pace&&x.pace.corrida?+x.pace.corrida.km:0)):sum(D.map(x=>x.power?+x.power.km:0));
+  const feitos=D.length?D.filter((_,k)=>chk[`${k}:${w}:treino`]||chk[`${k}:${w}:corrida`]).length:0;
+  const tile=(lbl,val,extra)=>`<div class="rtile"><span class="rl">${lbl}</span><b>${val}</b>${extra||""}</div>`;
+  const dias=DIAS.map((nmD,k)=>{const l=s.acts.filter(a=>a.d===k),p=D[k];
+   const pl=!p?"":w==="power"?nm(p.power&&p.power.titulo):[p.pace&&p.pace.corrida?`Corrida: ${p.pace.corrida.titulo} (${num(p.pace.corrida.km)} km)`:"",p.pace?nm((p.pace[(W.log&&W.log.opt&&W.log.opt[k])||"a"]||p.pace.a||{}).titulo):""].filter(Boolean).join(" + ");
+   const ok=chk[`${k}:${w}:treino`]||chk[`${k}:${w}:corrida`];
+   return `<tr><td><b>${AB[k]}</b><span class="mt">${fmt(new Date(addDias(id,k)+"T12:00:00"))}</span></td><td>${pl?esc(pl):'<span class="mt">sem plano salvo</span>'}${ok?' <b style="color:var(--ok)">feito</b>':""}</td>
+    <td>${l.length?l.map(a=>`<div>${esc(a.titulo||a.tipo||"Atividade")}${+a.km?`: <b>${num((+a.km).toFixed(2))} km</b>`:""}${a.tempo?` em ${esc(a.tempo)}`:""}${a.pace?`, pace ${esc(a.pace)}`:""}${+a.fc?`, FC ${esc(a.fc)}`:""}</div>`).join(""):'<span class="mt">—</span>'}</td></tr>`}).join("");
+  const an=(W.analise||{})[w],ld=state.rh.iaLoading===id+w;
+  return `<section class="panel wide rsec ${w}"><div class="rhead"><span class="badge ${w==="power"?"po":"pa"}"><i></i>${esc(quem(w))}</span><span class="mt">${s.n} ${s.n===1?"atividade importada":"atividades importadas"}</span></div>
+   ${D.length?avalSemanaHTML(plan,W.log,W.res,w):`<p class="sub">Sem plano salvo para esta semana: aparecem só os resultados importados.</p>`}
+   <div class="coach ${w}"><div class="coach-h"><b>Análise do treinador (IA)</b><button class="btn sm ${an?"ghost":""}" data-act="ia-analise" data-who="${w}" ${ld?"disabled":""}>${ld?"Analisando…":an?"Refazer análise":"Gerar análise"}</button></div>
+    ${state.rh.iaErr&&state.rh.iaErr.k===id+w?`<p class="redo-err">${esc(state.rh.iaErr.t)}</p>`:""}
+    ${an?`<p>${esc(nm(an.resumo||""))}</p>${[["Pontos fortes",an.fortes],["O que melhorar",an.melhorar],["Foco para a próxima semana",an.foco]].filter(([,l])=>Array.isArray(l)&&l.length).map(([t,l])=>`<h4>${t}</h4><ul>${l.map(x=>`<li>${esc(nm(x))}</li>`).join("")}</ul>`).join("")}<p class="mt">Gerada em ${esc(an.quando||"")}.</p>`:`<p class="mt">A IA lê o plano, as marcações e os resultados importados desta semana${w==="pace"?", incluindo as corridas e a alimentação,":" e a alimentação"} e escreve um feedback como um treinador.</p>`}</div>
+   ${s.n?`<div class="rtiles">
+    ${tile("Km corridos",`${num(s.km.toFixed(1))} km`,(kmPlan?`<span class="dl">planejado: ${num(kmPlan.toFixed(1))} km</span>`:"")+deltaTxt(s.km,sa&&sa.km,x=>num(x.toFixed(1))+" km"))}
+    ${tile("Tempo de treino",s.seg?hms(s.seg):"—",deltaTxt(s.seg,sa&&sa.seg,x=>Math.round(x/60)+" min"))}
+    ${tile("Pace médio das corridas",s.pace?hms(s.pace)+"/km":"—",deltaTxt(s.pace,sa&&sa.pace,x=>hms(x),true))}
+    ${tile("FC média",s.fc?s.fc+" bpm":"—",deltaTxt(s.fc,sa&&sa.fc,x=>Math.round(x)+" bpm",true))}
+    ${D.length?tile("Treinos marcados como feitos",`${feitos} de ${D.length}`):""}
+   </div>`:`<p class="sub">Nenhum resultado ${esc(doDa(w))} importado nesta semana.</p>`}
+   <div class="tbl"><table class="rtab"><thead><tr><th>Dia</th><th>Planejado</th><th>Realizado</th></tr></thead><tbody>${dias}</tbody></table></div></section>`;
+ };
+ const ult=ids.slice(0,8).reverse();
+ const evo=ult.length>1?`<div class="panel wide"><h3>Evolução</h3><p class="sub">Km corridos em cada semana com resultados importados.</p>${chart(lista.map(w=>({name:quem(w),color:`var(--${w})`,values:ult.map(x=>+statsAtl(rh.weeks[x].res,w).km.toFixed(1))})),"km",ult.map(x=>fmt(new Date(x+"T12:00:00"))))}</div>`:"";
+ v.innerHTML=`<div class="tool"><div><h2 class="sec">Resultados</h2><p class="lead">Histórico dos resultados importados (Garmin, prints e PDF), semana a semana. Abre na semana passada.</p></div></div>
+ <div class="rbar">
+  <button class="menu-nav" data-res-nav="${i+1}" ${i+1>=ids.length?"disabled":""} aria-label="Semana anterior">‹</button>
+  <select id="res-week" aria-label="Escolher semana">${ids.map(x=>`<option value="${x}" ${x===id?"selected":""}>${esc(semLabel(x))}${x===state.week.id?" · aberta":""}</option>`).join("")}</select>
+  <button class="menu-nav" data-res-nav="${i-1}" ${i<=0?"disabled":""} aria-label="Semana seguinte">›</button>
+ </div>
+ <div class="who-seg" role="group" aria-label="De quem"><button data-res-who="ambos" aria-pressed="${who==="ambos"}">Os dois</button><button data-res-who="pace" aria-pressed="${who==="pace"}">${esc(NA())}</button><button data-res-who="power" aria-pressed="${who==="power"}">${esc(NP())}</button></div>
+ ${rh.loading?`<p class="sub">Atualizando…</p>`:""}
+ <div class="grid">${lista.map(bloco).join("")}${evo}</div>
+ <div class="actions"><button class="btn sm ghost" data-act="res-reload">Atualizar resultados</button></div>`;
 }
 
 /* Plano Alimentar Completo (Ewerton + Joanna + Diário de Adesão & Observações) */
@@ -1579,6 +1806,7 @@ async function importRes(file,who){
    if(wk===state.week.id)state.res=cur;save(path,cur);
   }
   saveLog({chk:state.log.chk});
+  state.rh.loaded=false;/* a aba Resultados recarrega o histórico com o que acabou de entrar */
   render();say(id,`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`);
  }catch(e){say(id,ERR(e))}
 }
@@ -1671,6 +1899,11 @@ view.addEventListener("click",e=>{
  if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;state.dietDraft=null;render();return}
  if(t.dataset.go!==undefined){state.dia=+t.dataset.go;state.editing=null;state.tab="dia";render();scrollTo(0,0);return}
  if(t.dataset.agua){addAgua(t.dataset.agua,+t.dataset.ml||0);return}
+ if(t.dataset.resNav!==undefined){const id=resIds()[+t.dataset.resNav];if(id){state.rh.sel=id;render();loadSemRH(id)}return}
+ if(t.dataset.resWho!==undefined){state.rh.who=t.dataset.resWho;render();return}
+ if(t.dataset.act==="res-reload"){state.rh.loaded=false;render();return}
+ if(t.dataset.act==="ia-analise"){iaAnalise(t.dataset.who);return}
+ if(t.dataset.tabGo){state.tab=t.dataset.tabGo;render();scrollTo(0,0);return}
  if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
  if(t.dataset.genWho!==undefined){const a=document.getElementById("ajustes");if(a)state.ajustesTxt=a.value;state.genWho=t.dataset.genWho;render();return}
  const act=t.dataset.act;
@@ -1751,6 +1984,7 @@ view.addEventListener("click",e=>{
  if(t.id==="desc"){state.draft=null;document.getElementById("prev").innerHTML="";document.getElementById("gst").textContent=""}
 });
 view.addEventListener("change",e=>{
+ if(e.target.id==="res-week"){state.rh.sel=e.target.value;render();loadSemRH(e.target.value);return}
  const k=e.target.dataset.k;
  if(k){setC(k,e.target.checked);if(state.tab==="dia"&&/:(treino|corrida)$/.test(k))render();return}
  const c=e.target.dataset.cfg;if(!c)return;const val=e.target.value.trim();
