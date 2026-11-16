@@ -118,6 +118,34 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .chk input{accent-color:var(--ok);width:16px;height:16px;margin:0}
 .chk label:has(input:checked){border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
 .chk .sub{width:100%;font-size:.8rem;color:var(--muted);margin-top:8px}
+.pos{width:100%;display:grid;gap:8px;margin:2px 0 4px}
+.rpe-t{font-size:.82rem;color:var(--muted)} .rpe-t b{color:var(--ink)}
+.rpe-b{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px;margin-top:4px}
+.rpe-b button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 0;font-size:.82rem;font-weight:700;color:var(--ink);cursor:pointer;min-width:0}
+.rpe-b button[aria-pressed="true"]{background:hsl(var(--h) 55% 42%);border-color:hsl(var(--h) 55% 42%);color:#fff}
+.carga{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-size:.84rem;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:8px 10px}
+.form-carga{justify-content:flex-start}
+.form-carga .rpe-t{width:100%}
+.form-carga select{flex:1 1 140px;min-width:0;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:6px 8px;font-size:.85rem}
+.form-carga input{width:72px;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:6px 8px;font-size:.85rem}
+.pront{--c:var(--muted);border:1px solid var(--line);border-left:4px solid var(--c);background:var(--surface);border-radius:var(--r-md);margin:0 0 10px;padding:0}
+.pront.ok{--c:var(--ok)} .pront.mid{--c:var(--warn)} .pront.low{--c:#C0392B}
+.pront summary{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 12px;cursor:pointer;font-size:.88rem;font-weight:700;list-style:none}
+.pront summary::-webkit-details-marker{display:none}
+.pront summary b{color:var(--c);font-size:.84rem}
+.pq{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:6px 12px;border-top:1px solid var(--line-2)}
+.pq>span{font-size:.86rem} .pq small{grid-column:1/-1;font-size:.72rem;color:var(--muted)}
+.pq-b{display:flex;gap:3px}
+.pq-b button{width:32px;height:30px;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;font-weight:700;cursor:pointer;color:var(--ink)}
+.pq-b button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+.pq-fc{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding:8px 12px;border-top:1px solid var(--line-2);font-size:.8rem;color:var(--muted)}
+.pq-fc input{width:80px;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-sm);padding:5px 8px}
+.pq-dica{margin:0;padding:8px 12px 10px;font-size:.84rem;color:#C0392B;border-top:1px solid var(--line-2)}
+.ind{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.ind span{font-size:.8rem;border:1px solid var(--line-2);background:var(--surface-2);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.ind span b{color:var(--ink)} .ind .g{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))} .ind .g b{color:var(--ok)}
+.ind .m b{color:var(--warn)} .ind .w{border-color:color-mix(in srgb,#C0392B 40%,var(--line))} .ind .w b{color:#C0392B}
+.forca{margin:0 0 14px} .forca h4{margin:0 0 4px;font-size:.86rem}
 .aval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
 .aval{border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;background:var(--surface);min-width:0}
 .aval.pace{border-top:3px solid var(--pace)} .aval.power{border-top:3px solid var(--power)}
@@ -912,6 +940,86 @@ function aguaHTML(who,d){
   <p class="agua-info">Meta do dia: ${pesoDe(who)} kg × 35 ml${tm?` + ${tm} min de treino (500 ml por hora)`:""}</p>
   <div class="agua-btns"><button data-agua="${k}" data-ml="250">+250 ml</button><button data-agua="${k}" data-ml="500">+500 ml</button><button data-agua="${k}" data-ml="-250" ${ml?"":"disabled"}>−250 ml</button></div></div>`;
 }
+/* ===== Desempenho: esforço percebido (sRPE), prontidão diária e cargas dos levantamentos principais ===== */
+const RPE_TXT=["","Muito leve","Leve","Leve","Moderado","Moderado","Puxado","Difícil","Muito difícil","Quase máximo","Máximo"];
+/* duração usada na carga: corrida usa o tempo realizado importado (ou o estimado); sessões usam o tempo real do KPI */
+function durSessao(plan,res,who,d,slot,opt){
+ const day=plan&&plan.dias&&plan.dias[d];if(!day)return 0;
+ if(slot==="corrida"){const c=day.pace&&day.pace.corrida;const real=sum(((res&&res.pace&&res.pace[d])||[]).filter(a=>a.run).map(a=>secOf(a.tempo)));return real?Math.round(real/60):(c?+c.min||0:0)}
+ if(who==="power")return minReal(day.power||{});
+ return minReal((day.pace&&(day.pace[(opt&&opt[d])||"a"]||day.pace.a))||{});
+}
+/* carga de treino da semana (sRPE × minutos, em unidades arbitrárias), por dia */
+function cargaSemana(plan,log,res,who){
+ const D=(plan&&plan.dias)||[],r=(log&&log.rpe)||{},opt=(log&&log.opt)||{};
+ const dias=D.map((_,i)=>{let t=0;const kt=`${i}:${who}:treino`,kc=`${i}:pace:corrida`;
+  if(+r[kt])t+=+r[kt]*durSessao(plan,res,who,i,"treino",opt);
+  if(who==="pace"&&+r[kc])t+=+r[kc]*durSessao(plan,res,who,i,"corrida",opt);return t});
+ return {total:sum(dias),dias,n:Object.keys(r).filter(k=>k.split(":")[1]===who&&+r[k]).length};
+}
+function rpeHTML(k,label,min){
+ const v=+((state.log.rpe||{})[k])||0;
+ return `<div class="rpe" role="group" aria-label="${esc(label)}"><div class="rpe-t">${esc(label)}: ${v?`<b>${v}/10</b> · ${RPE_TXT[v]}${min?` · carga ${v*min} (${v} × ${min} min)`:""}`:"toque de 1 a 10"}</div>
+  <div class="rpe-b">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-rpe="${k}" data-v="${n}" aria-pressed="${n===v}" style="--h:${130-n*13}">${n}</button>`).join("")}</div></div>`;
+}
+function setRpe(k,v){state.log.rpe=state.log.rpe||{};v=state.log.rpe[k]===v?0:v;state.log.rpe[k]=v;saveLog({rpe:{[k]:v}});render()}
+/* prontidão (questionário de Hooper adaptado): 4 perguntas de 1 a 5, sendo 5 o melhor */
+const PRONT_Q=[["sono","Qualidade do sono","Péssima","Ótima"],["fadiga","Disposição","Exausto","Descansado"],["dor","Dor muscular","Muita dor","Sem dor"],["estresse","Estresse","Muito alto","Tranquilo"]];
+function prontScore(p){if(!p)return 0;const v=PRONT_Q.map(([k])=>+p[k]||0);if(v.some(x=>!x))return 0;return Math.round((sum(v)-4)/16*100)}
+const prontNivel=s=>s>=75?["ok","Pronto para treinar"]:s>=55?["mid","Atenção: treine, mas escute o corpo"]:["low","Recuperar: reduza a intensidade hoje"];
+function prontHTML(who,d){
+ const k=`${d}:${who}`,p=(state.log.prontidao||{})[k]||{},s=prontScore(p),[c,t]=s?prontNivel(s):["",""];
+ return `<details class="pront ${c}" ${s?"":"open"}><summary><span>Prontidão de ${DIAS[d].toLowerCase()}</span>${s?`<b>${s} · ${t}</b>`:`<b class="mt">responder (15 s)</b>`}</summary>
+  ${PRONT_Q.map(([q,lbl,a,b])=>`<div class="pq"><span>${lbl}</span><div class="pq-b">${[1,2,3,4,5].map(n=>`<button data-pr="${k}" data-q="${q}" data-v="${n}" aria-pressed="${+p[q]===n}" title="${n===1?a:n===5?b:""}">${n}</button>`).join("")}</div><small>${a} → ${b}</small></div>`).join("")}
+  <label class="pq-fc">FC de repouso ao acordar (opcional, do relógio)<input type="number" inputmode="numeric" min="30" max="120" data-prfc="${k}" value="${esc(p.fc||"")}" placeholder="bpm"></label>
+  ${s&&s<55?`<p class="pq-dica">Prontidão baixa: prefira a opção mais leve, reduza cerca de 20% do volume ou mantenha o aeróbico em Z1–Z2.</p>`:""}</details>`;
+}
+function setPront(k,q,v){state.log.prontidao=state.log.prontidao||{};const p=state.log.prontidao[k]=state.log.prontidao[k]||{};p[q]=v;saveLog({prontidao:{[k]:{[q]:v}}});render()}
+/* cargas: exercício principal do dia, com carga e repetições; 1RM estimado pela fórmula de Epley */
+const nomeEx=t=>String(t||"").replace(/\(.*?\)/g,"").split(/\s\d|\s[×x]\s?\d|:/)[0].trim().replace(/\s+/g," ");
+const e1rm=(kg,reps)=>kg&&reps?Math.round(kg*(1+Math.min(reps,12)/30)*2)/2:0;
+function exForca(s){
+ const out=[];for(const b of (s&&s.blocos)||[])for(const i of b.itens||[]){const t=typeof i==="string"?i:i&&i.t;
+  if(i&&typeof i==="object"?+i.reps>0&&+i.series>0&&!(+b.voltas>1):/\d+\s*[×x]\s*\d+/.test(t||""))out.push(nomeEx(t))}
+ return [...new Set(out.filter(Boolean))];
+}
+/* histórico de cargas de todas as semanas disponíveis (atual, histórico do Painel e aba Resultados) */
+function semanasConhecidas(){
+ const m=new Map();
+ Object.entries(state.hist||{}).forEach(([id,h])=>{if(h&&h.plan)m.set(id,{plan:h.plan,log:h.log||{},res:h.res||{}})});
+ Object.entries((state.rh&&state.rh.weeks)||{}).forEach(([id,w])=>{if(w&&w.plan&&w.plan.dias)m.set(id,{plan:w.plan,log:w.log||{},res:w.res||{}})});
+ m.set(state.week.id,{plan:state.week,log:state.log,res:state.res});
+ return m;
+}
+function semanaDe(id){return semanasConhecidas().get(id)||null}
+function historicoCargas(who){
+ const out=[];for(const [id,w] of semanasConhecidas())Object.entries((w.log&&w.log.cargas)||{}).forEach(([k,c])=>{const [d,wh]=k.split(":");if(wh===who&&c&&c.ex&&+c.kg)out.push({id,d:+d,data:addDias(id,+d),ex:c.ex,kg:+c.kg,reps:+c.reps||1,rm:e1rm(+c.kg,+c.reps||1)})});
+ return out.sort((a,b)=>a.data.localeCompare(b.data));
+}
+function cargaHTML(who,d,s){
+ const exs=exForca(s);if(!exs.length)return "";
+ const k=`${d}:${who}`,c=(state.log.cargas||{})[k];
+ if(c&&!state.hist&&!state.histLoading)setTimeout(loadHist,0);/* histórico das semanas anteriores para comparar com o recorde */
+ const ed=state.cargaEdit===k||!c;
+ if(!ed){const rm=e1rm(+c.kg,+c.reps),ant=historicoCargas(who).filter(x=>x.ex.toLowerCase()===c.ex.toLowerCase()&&x.data<addDias(state.week.id,d));const melhor=ant.length?Math.max(...ant.map(x=>x.rm)):0;
+  return `<div class="carga"><span>Principal: <b>${esc(c.ex)}</b> · ${num(c.kg)} kg × ${+c.reps} · 1RM estimado <b>${num(rm)} kg</b>${melhor?` <span class="dl ${rm>melhor?"up":rm<melhor?"down":""}">${rm>melhor?"▲ recorde":rm<melhor?"▼":"="} (antes ${num(melhor)} kg)</span>`:""}</span><button class="link" data-act="carga-edit" data-k="${k}">alterar</button></div>`}
+ return `<div class="carga form-carga" data-k="${k}"><span class="rpe-t">Carga do exercício principal</span>
+  <select data-cg="ex" aria-label="Exercício">${exs.map(x=>`<option ${c&&c.ex===x?"selected":""}>${esc(x)}</option>`).join("")}</select>
+  <input type="text" inputmode="decimal" data-cg="kg" placeholder="kg" value="${esc(c?String(c.kg).replace(".",","):"")}" aria-label="Carga em kg">
+  <input type="number" inputmode="numeric" data-cg="reps" placeholder="reps" min="1" max="30" value="${esc(c?c.reps:"")}" aria-label="Repetições na série mais pesada">
+  <button class="btn sm" data-act="carga-salvar">Salvar</button></div>`;
+}
+function salvarCarga(box){
+ const k=box.dataset.k,ex=box.querySelector('[data-cg="ex"]').value,kg=parseFloat(String(box.querySelector('[data-cg="kg"]').value).replace(",",".")),reps=parseInt(box.querySelector('[data-cg="reps"]').value);
+ if(!(kg>0)||!(reps>0)){box.querySelector(".rpe-t").textContent="Preencha a carga (kg) e as repetições da série mais pesada.";return}
+ state.log.cargas=state.log.cargas||{};const c={ex,kg,reps};state.log.cargas[k]=c;state.cargaEdit=null;saveLog({cargas:{[k]:c}});render();
+}
+/* bloco "depois do treino": esforço percebido e carga do principal, aparece quando o treino é marcado como feito */
+function posTreinoHTML(who,d,s,slot){
+ const k=`${d}:${who}:${slot}`;if(!isC(k))return "";
+ const min=slot==="corrida"?durSessao(state.week,state.res,who,d,"corrida",state.log.opt):minReal(s);
+ return `<div class="pos">${rpeHTML(k,slot==="corrida"?"Esforço da corrida":"Esforço do treino",min)}${slot==="corrida"?"":cargaHTML(who,d,s)}</div>`;
+}
 function addAgua(k,delta){
  state.log.agua=state.log.agua||{};
  const ml=Math.max(0,(+state.log.agua[k]||0)+delta),[d,who]=k.split(":"),ok=ml>=metaAgua(who,+d);
@@ -937,7 +1045,7 @@ function powerCard(s,d){
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}${kpiChip(s,"power",d)}</div>
   ${blocos(s,false)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
-   ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${aguaHTML("power",d)}
+   ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${posTreinoHTML("power",d,s,"treino")}${aguaHTML("power",d)}
    <div class="sub">Plano alimentar (${esc(NP())})</div>${DIET_EWERTON.refeicoes.map(m=>ck(`${d}:power:${m.k}`,`${m.h} ${m.n}`)).join("")}
   </div></div></article>`;
 }
@@ -949,7 +1057,7 @@ function runCard(r,d){
   <div class="stats"><span><b>${num(r.km)}</b> km</span><span>~<b>${+r.min||0}</b> min</span>${r.obs?`<span>${esc(r.obs)}</span>`:""}</div>
   <ol class="steps">${(r.passos||[]).map(p=>`<li><span>${rich(p,true)}</span></li>`).join("")}</ol>
   ${acts("pace",d).some(a=>a.run)?realHTML(acts("pace",d).filter(a=>a.run),+r.km):`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="pace">Importar resultado do Garmin</button></p>`}`}</div>
-  <div class="checks"><div class="chk">${ck(d+":pace:corrida","Corrida feita")}</div></div></article>`;
+  <div class="checks"><div class="chk">${ck(d+":pace:corrida","Corrida feita")}${posTreinoHTML("pace",d,r,"corrida")}</div></div></article>`;
 }
 function optCard(p,d){
  const o=opt(d), s=p[o]||p.a, run=!!p.corrida;
@@ -961,7 +1069,7 @@ function optCard(p,d){
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,"pace",d)}</div>
   ${blocos(s,true)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
-   ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${aguaHTML("pace",d)}
+   ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${posTreinoHTML("pace",d,s,"treino")}${aguaHTML("pace",d)}
    <div class="sub">Plano alimentar (${esc(NA())})</div>${MEALS_JOANNA.map(m=>ck(`${d}:pace:${m.k}`,`${m.h} ${m.n}`)).join("")}</div></div></article>`;
 }
 
@@ -973,8 +1081,8 @@ function vDia(v){
   <div class="dayhead"><div class="dayname">${DIAS[d]}</div><div class="daydate">${dt(d).toLocaleDateString("pt-BR",{day:"numeric",month:"long"})}</div></div>
   ${day.nota?`<p class="daynote">${rich(day.nota,false)}</p>`:`<div style="height:22px"></div>`}
   <div class="cols">
-   <section class="col"><div class="colhead"><span class="badge po"><i></i>${esc(NP())}</span><span class="goal">Hyrox, Crossfit e musculação</span></div>${powerCard(day.power,d)}</section>
-   <section class="col"><div class="colhead"><span class="badge pa"><i></i>${esc(NA())}</span><span class="goal">Corrida e musculação (50–60 min/dia)</span></div>${day.pace.corrida?runCard(day.pace.corrida,d):""}${optCard(day.pace,d)}</section>
+   <section class="col"><div class="colhead"><span class="badge po"><i></i>${esc(NP())}</span><span class="goal">Hyrox, Crossfit e musculação</span></div>${prontHTML("power",d)}${powerCard(day.power,d)}</section>
+   <section class="col"><div class="colhead"><span class="badge pa"><i></i>${esc(NA())}</span><span class="goal">Corrida e musculação (50–60 min/dia)</span></div>${prontHTML("pace",d)}${day.pace.corrida?runCard(day.pace.corrida,d):""}${optCard(day.pace,d)}</section>
   </div>`;
 }
 
@@ -1031,7 +1139,8 @@ function vPainel(v){
   <div class="panel wide"><h3>Resultados da semana</h3><p class="sub">Atividades importadas do Garmin ou de outro app (CSV, PDF, foto ou print). Cada uma é ligada ao dia certo pela data.</p>
    ${all.length?all.map(a=>`<div class="row"><span><b>${AB[a.i]}</b> <span class="who-tag ${a.w}">${esc(quem(a.w))}</span> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" em "+esc(a.tempo):""}${a.pace?", pace "+esc(a.pace):""}${a.fc?", FC "+esc(a.fc):""}</span></div>`).join(""):`<p class="sub" style="margin:0">Nenhum resultado importado nesta semana ainda.</p>`}</div>
   <div class="panel"><h3>Corrida</h3><p class="sub">Km por dia. ${esc(NA())}: ${num(sum(kmPa).toFixed(1))} km planejados, ${num(sum(rkPa).toFixed(1))} km realizados. ${esc(NP())}: ${num(sum(kmPo).toFixed(1))} km planejados.</p>${chart([{name:NA()+" planejado",color:"var(--pace)",values:kmPa},{name:NA()+" realizado",color:"var(--ok)",values:rkPa},{name:NP()+" planejado",color:"var(--power)",values:kmPo}],"km")}</div>
-  <div class="panel"><h3>Carga de treino</h3><p class="sub">Minutos × esforço (0 a 10). Mostra se os picos dos dois caem no mesmo dia.</p>${chart([{name:NP(),color:"var(--power)",values:ldPo},{name:NA(),color:"var(--pace)",values:ldPa}],"pontos")}</div>
+  <div class="panel"><h3>Carga de treino</h3><p class="sub">Minutos × esforço (0 a 10). Planejada pelo plano e realizada pelo esforço que cada um registra depois do treino. Mostra se os picos dos dois caem no mesmo dia.</p>${(()=>{const rPo=cargaSemana(state.week,state.log,state.res,"power").dias,rPa=cargaSemana(state.week,state.log,state.res,"pace").dias,tem=sum(rPo)+sum(rPa)>0;
+   return chart([{name:NP()+" planejada",color:"color-mix(in srgb,var(--power) 40%,var(--surface))",values:ldPo},...(tem?[{name:NP()+" realizada",color:"var(--power)",values:rPo}]:[]),{name:NA()+" planejada",color:"color-mix(in srgb,var(--pace) 40%,var(--surface))",values:ldPa},...(tem?[{name:NA()+" realizada",color:"var(--pace)",values:rPa}]:[])],"pontos")})()}</div>
   <div class="panel"><h3>Distribuição por zona</h3><p class="sub">Só trabalho aeróbico e de condicionamento; séries de força ficam de fora.</p>${zoneBlock(NP(),"var(--power)",zPo)}${zoneBlock(NA(),"var(--pace)",zPa)}</div>
   <div class="panel"><h3>Adesão e volume</h3><p class="sub">Marcações feitas na aba Dia e média diária planejada.</p>
    <div class="row"><span>Média diária (${esc(NP())} / ${esc(NA())})</span><b>${avgPo} min / ${avgPa} min</b></div>
@@ -1080,7 +1189,7 @@ async function loadHist(){
   if(w.id===state.week.id)continue;
   try{out[w.id]={nome:w.nome,plan:await load("semanas/v2-"+w.id),log:await load("registro/v2-"+w.id),res:await load("resultados/v2-"+w.id)}}catch(e){}
  }
- state.hist=out;state.histLoading=false;if(state.tab==="painel")render();
+ state.hist=out;state.histLoading=false;if(state.tab==="painel"||state.tab==="dia")render();
 }
 const pct=x=>Math.round((x||0)*100)+"%";
 const bar=(x,color)=>`<div class="hb"><span><b style="width:${Math.min(100,Math.round((x||0)*100))}%;background:${color}"></b></span>${pct(x)}</div>`;
@@ -1127,15 +1236,18 @@ async function loadRH(){
  await loadSemRH(rh.sel);
 }
 /* plano e marcações da semana escolhida, para comparar o planejado com o realizado */
-async function loadSemRH(id){
+async function loadSemRH(id,semRender){
+ /* as 4 semanas anteriores entram no cálculo da relação aguda/crônica da carga */
+ if(!semRender)for(let k=1;k<=4;k++){const pid=addDias(id,-7*k);if(!(state.rh.weeks[pid]&&state.rh.weeks[pid].plan))await loadSemRH(pid,true)}
  const w=state.rh.weeks[id]||(state.rh.weeks[id]={res:{pace:{},power:{}}});
  if(!w.plan){
   if(id===state.week.id){w.plan=state.week;w.log=state.log}
   else{try{w.plan=await load("semanas/v2-"+id);w.log=await load("registro/v2-"+id)}catch(e){}w.plan=w.plan||{};w.log=w.log||{}}
   if(w.plan&&Array.isArray(w.plan.dias))valid(w.plan);
+  if(!w.res||!temAtv(w.res)){try{const r=await load("resultados/v2-"+id);if(r)w.res={pace:r.pace||{},power:r.power||{}}}catch(e){}}
   try{w.analise=(await load("analises/v2-"+id))||{}}catch(e){w.analise={}}
  }
- if(state.tab==="resultados")render();
+ if(!semRender&&state.tab==="resultados")render();
 }
 const temAtv=r=>["pace","power"].some(w=>Object.values((r&&r[w])||{}).some(l=>(l||[]).length));
 const resIds=()=>Object.keys(state.rh.weeks||{}).filter(id=>id===state.rh.sel||temAtv(state.rh.weeks[id].res)).sort().reverse();
@@ -1187,7 +1299,26 @@ function avaliar(plan,log,res,who,ateDia){
  const Dt=g("dieta");if(Dt.total){if(Dt.pct>=80)fortes.push(`Boa adesão à dieta: ${Dt.pct}% das refeições.`);else melhorar.push(`Alimentação em ${Dt.pct}% das refeições marcadas.${off.length?` Dias fora: ${off.map(i=>AB[i]).join(", ")}.`:""} Planejar as refeições do dia seguinte ajuda.`)}
  const A=g("agua");if(A.pct>=80)fortes.push("Hidratação em dia na maior parte da semana.");else melhorar.push(`Água: meta batida só em ${A.feito} de ${A.total} dias. Deixe uma garrafa à vista e use os botões de +500 ml.`);
  const Sn=g("sono");if(Sn.pct<60)melhorar.push(`Sono de 7h ou mais em só ${Sn.feito} de ${Sn.total} noites: a recuperação dos treinos depende disso.`);else if(Sn.pct>=80)fortes.push("Sono bem cuidado na semana.");
- return {m,nota,fortes,melhorar,nd,parcial:ateDia>=0&&nd<D.length,st};
+ /* indicadores de desempenho: carga (sRPE), relação aguda/crônica, prontidão, esforço contra o planejado e força */
+ const parcial=ateDia>=0&&nd<D.length,rp=(log&&log.rpe)||{},pr=(log&&log.prontidao)||{};
+ const cg=cargaSemana(plan,log,res,who),carga=sum(cg.dias.slice(0,nd));
+ let acwr=null;
+ if(!parcial&&carga&&plan&&plan.id){const ant=[1,2,3,4].map(k=>semanaDe(addDias(plan.id,-7*k))).filter(Boolean).map(w=>cargaSemana(w.plan,w.log,w.res,who).total).filter(x=>x>0);
+  if(ant.length>=2)acwr=Math.round(carga/(sum(ant)/ant.length)*100)/100}
+ const pS=I.map(i=>prontScore(pr[`${i}:${who}`])).filter(Boolean),pront=pS.length?Math.round(sum(pS)/pS.length):0,pBaixa=pS.filter(x=>x<55).length;
+ const pesado=[],leve=[];
+ I.forEach(i=>{const real=+rp[`${i}:${who}:treino`];if(!real)return;const ses=who==="power"?D[i].power:(D[i].pace[opt[i]||"a"]||D[i].pace.a);const plan_=+(ses&&ses.rpe)||0;if(!plan_)return;if(real>=plan_+2)pesado.push(AB[i]);else if(real<=plan_-3)leve.push(AB[i])});
+ const semRpe=tDone.filter(i=>!+rp[`${i}:${who}:treino`]).length;
+ const hc=historicoCargas(who),ini=plan&&plan.id?plan.id:"";
+ const recordes=hc.filter(x=>x.id===ini&&x.d<nd).filter(x=>{const antes=hc.filter(y=>y.ex.toLowerCase()===x.ex.toLowerCase()&&y.data<x.data);return antes.length&&x.rm>Math.max(...antes.map(y=>y.rm))}).map(x=>`${x.ex} (${num(x.rm)} kg)`);
+ const ind={carga,acwr,pront,pBaixa,nPront:pS.length,recordes};
+ if(acwr!==null){if(acwr>1.5)melhorar.push(`Carga da semana ${num(acwr)}× a média das anteriores: subida brusca aumenta o risco de lesão. Segure o volume na próxima semana.`);else if(acwr<0.8)melhorar.push(`Carga da semana em ${num(acwr)}× a média das anteriores: abaixo do necessário para evoluir, a não ser que tenha sido semana de descanso.`);else fortes.push(`Carga bem dosada: ${num(acwr)}× a média das últimas semanas (faixa ideal de 0,8 a 1,3).`)}
+ if(pBaixa>=2)melhorar.push(`Prontidão baixa em ${pBaixa} dias: priorize sono e alimentação e use a opção mais leve nesses dias.`);else if(pront>=75&&pS.length>=3)fortes.push(`Boa prontidão média (${pront}): corpo respondendo bem à carga.`);
+ if(pesado.length)melhorar.push(`Treinos sentidos bem mais pesados que o planejado em ${pesado.join(", ")}: pode ser fadiga acumulada. Confira sono, alimentação e prontidão desses dias.`);
+ if(leve.length>=2)fortes.push(`Treinos sentidos mais leves que o planejado em ${leve.join(", ")}: espaço para progredir as cargas.`);
+ if(recordes.length)fortes.push(`Recorde de força estimada: ${recordes.join(", ")}.`);
+ if(semRpe&&tDone.length)melhorar.push(`Registre o esforço (1 a 10) depois de cada treino: faltou em ${semRpe} ${semRpe>1?"treinos":"treino"}. É isso que mostra a carga real.`);
+ return {m,nota,fortes,melhorar,nd,parcial,st,ind};
 }
 const cor=p=>p>=80?"ok":p>=50?"mid":"low";
 /* até que dia avaliar a semana: semana em andamento conta só os dias já encerrados (até ontem) */
@@ -1206,6 +1337,11 @@ function avaliacaoHTML(av,who){
  return `<div class="aval ${who}">
   <div class="aval-top"><div class="ring ${cor(n)}" style="--p:${n}"><b>${n}</b><span>nota</span></div>
    <div><div class="aval-n">${esc(quem(who))}: ${nivel}</div><div class="mt">${av.parcial?`Avaliação parcial, até ${DIAS[av.nd-1].toLowerCase()}.`:"Semana completa."} Cumprimento do plano: verde a partir de 80%, amarelo de 50% a 79%, vermelho abaixo de 50%.</div></div></div>
+  ${av.ind?`<div class="ind">
+   <span title="Esforço percebido (1 a 10) × minutos de cada treino">Carga ${av.parcial?"até agora":"da semana"}: <b>${av.ind.carga?av.ind.carga.toLocaleString("pt-BR"):"sem registro"}</b></span>
+   ${av.ind.acwr!==null?`<span class="${av.ind.acwr>1.5||av.ind.acwr<0.8?"w":"g"}" title="Carga da semana dividida pela média das 4 semanas anteriores. Faixa ideal: 0,8 a 1,3">Aguda/crônica: <b>${num(av.ind.acwr)}</b></span>`:""}
+   <span class="${av.ind.pront?(av.ind.pront>=75?"g":av.ind.pront>=55?"m":"w"):""}">Prontidão média: <b>${av.ind.pront||"sem registro"}</b></span>
+  </div>`:""}
   <div class="aval-m">${av.m.filter(x=>x.total).map(x=>`<details class="am ${cor(x.k==="km"?Math.max(0,100-Math.abs(100-x.pct)):x.pct)}"><summary><span>${esc(x.lbl)}</span><b>${x.k==="km"?`${num(x.feito)} de ${num(x.total)} km`:`${x.feito} de ${x.total}${x.un?" "+x.un:""}`} · ${x.pct}%</b><i style="width:${Math.min(100,x.pct)}%"></i></summary><p>${esc(x.det)}</p></details>`).join("")}</div>
   <div class="aval-fb">${av.fortes.length?`<div><h4>Pontos fortes</h4><ul>${av.fortes.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}${av.melhorar.length?`<div><h4>O que melhorar</h4><ul>${av.melhorar.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>`:""}</div>
  </div>`;
@@ -1220,13 +1356,18 @@ async function iaAnalise(who){
  const rh=state.rh,id=rh.sel,W=rh.weeks[id];if(!W)return;
  const q=ateQuando(W.plan),av=avaliar(W.plan||{},W.log,W.res,who,typeof q==="number"?q:0),ant=rh.weeks[addDias(id,-7)];
  const sa=ant?statsAtl(ant.res,who):null,D=(W.plan&&W.plan.dias)||[];
- const dados={atleta:who,semana:semLabel(id),avaliacao_parcial:av.parcial,nota_do_app:av.nota,
+ const lg=W.log||{},pfx=k=>k.split(":")[1]===who;
+ const desempenho={carga_srpe:av.ind.carga,relacao_aguda_cronica:av.ind.acwr,prontidao_media_0a100:av.ind.pront||null,
+  esforco_por_sessao:Object.entries(lg.rpe||{}).filter(([k,v])=>pfx(k)&&+v).map(([k,v])=>{const [d,,s]=k.split(":");const ses=s==="corrida"?D[d]&&D[d].pace&&D[d].pace.corrida:who==="power"?D[d]&&D[d].power:D[d]&&D[d].pace&&(D[d].pace[(lg.opt||{})[d]||"a"]||D[d].pace.a);return {dia:DIAS[d],sessao:s,esforco_real:+v,esforco_planejado:ses?+ses.rpe||null:null}}),
+  prontidao_por_dia:Object.entries(lg.prontidao||{}).filter(([k])=>pfx(k)).map(([k,p])=>({dia:DIAS[k.split(":")[0]],nota:prontScore(p),fc_repouso:p.fc||null})),
+  cargas_principal:historicoCargas(who).filter(x=>x.id===id||x.data<id).slice(-12).map(x=>({data:x.data,exercicio:x.ex,kg:x.kg,reps:x.reps,rm_estimado:x.rm}))};
+ const dados={atleta:who,semana:semLabel(id),avaliacao_parcial:av.parcial,nota_do_app:av.nota,desempenho,
   metricas:av.m.filter(x=>x.total).map(x=>({item:x.lbl,feito:x.feito,total:x.total,percentual:x.pct,detalhe:x.det})),
   resultados_importados:av.st.acts.map(a=>({dia:DIAS[a.d],tipo:a.tipo,titulo:a.titulo,km:a.km,tempo:a.tempo,pace:a.pace,fc:a.fc})),
   semana_anterior:sa&&sa.n?{km:+sa.km.toFixed(1),pace_medio:sa.pace?hms(sa.pace):"",fc_media:sa.fc}:null,
   plano:D.map((d,i)=>({dia:DIAS[i],treino:who==="power"?d.power&&d.power.titulo:d.pace&&[d.pace.a&&d.pace.a.titulo,d.pace.b&&d.pace.b.titulo].join(" ou "),corrida:who==="pace"&&d.pace&&d.pace.corrida?`${d.pace.corrida.titulo} ${d.pace.corrida.km} km: ${(d.pace.corrida.passos||[]).join("; ")}`:null}))};
  const prompt=`Você é treinador de alta performance (metodologia HWPO) e escreve o feedback semanal de um atleta, como nos apps de treino de elite: direto, específico, com números e sem enrolação. Use os marcadores {power} e {pace} para citar os atletas, nunca nomes. ${PERFIL[who]}
-Analise a semana com os dados abaixo: cumprimento dos treinos${who==="pace"?", corridas da planilha (km, pace e FC realizados contra o planejado)":""}, alimentação, água e sono, e compare com a semana anterior quando houver. Se faltar dado (resultado não importado), diga o que importar. ${av.parcial?"A semana ainda está em andamento: avalie só até hoje.":""}
+Analise a semana com os dados abaixo: cumprimento dos treinos${who==="pace"?", corridas da planilha (km, pace e FC realizados contra o planejado)":""}, alimentação, água e sono, e compare com a semana anterior quando houver. Use também o desempenho: carga sRPE (esforço × minutos) e relação aguda/crônica (ideal 0,8 a 1,3; acima de 1,5 é risco), prontidão diária, esforço real contra o planejado e a evolução do 1RM estimado no exercício principal. Se faltar dado (resultado não importado), diga o que importar. ${av.parcial?"A semana ainda está em andamento: avalie só até hoje.":""}
 Dados (JSON): ${JSON.stringify(dados)}
 Responda APENAS JSON: {"resumo":"2 frases com a avaliação geral","fortes":["até 3 pontos fortes com números"],"melhorar":["até 3 pontos a melhorar, cada um com uma ação prática"],"foco":["até 2 focos para a próxima semana"]}. Português do Brasil.`;
  rh.iaLoading=id+who;rh.iaErr=null;render();
@@ -1270,6 +1411,9 @@ function vRes(v){
     ${tile("FC média",s.fc?s.fc+" bpm":"—",deltaTxt(s.fc,sa&&sa.fc,x=>Math.round(x)+" bpm",true))}
     ${D.length?tile("Treinos marcados como feitos",`${feitos} de ${D.length}`):""}
    </div>`:`<p class="sub">Nenhum resultado ${esc(doDa(w))} importado nesta semana.</p>`}
+   ${(()=>{const hc=historicoCargas(w),sem=hc.filter(x=>x.id===id);if(!sem.length)return "";
+    return `<div class="forca"><h4>Força: exercício principal (1RM estimado)</h4>${sem.map(x=>{const antes=hc.filter(y=>y.ex.toLowerCase()===x.ex.toLowerCase()&&y.data<x.data),mb=antes.length?Math.max(...antes.map(y=>y.rm)):0;
+     return `<div class="row"><span>${AB[x.d]} · ${esc(x.ex)}: ${num(x.kg)} kg × ${x.reps}</span><b>${num(x.rm)} kg${mb?` <span class="dl ${x.rm>mb?"up":x.rm<mb?"down":""}">${x.rm>mb?"▲ +"+num(x.rm-mb):x.rm<mb?"▼ "+num(mb-x.rm):"="} kg</span>`:""}</b></div>`}).join("")}</div>`})()}
    <div class="tbl"><table class="rtab"><thead><tr><th>Dia</th><th>Planejado</th><th>Realizado</th></tr></thead><tbody>${dias}</tbody></table></div></section>`;
  };
  const ult=ids.slice(0,8).reverse();
@@ -1499,8 +1643,18 @@ function promptBase(who){
 Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
 Evite alta intensidade no mesmo dia em que o outro atleta tem treino forte, quando possível.
 ${KPI_SPEC}
+${desempenhoIA(who)}
 Biblioteca de treinos do treinador (prefira adaptar estes treinos):
 ${libForPrompt()}`;
+}
+/* desempenho registrado (esforço, prontidão e cargas) para a IA progredir as cargas com base no realizado */
+function desempenhoIA(who){
+ const D=state.week.dias,rp=state.log.rpe||{},pr=state.log.prontidao||{},cg=cargaSemana(state.week,state.log,state.res,who);
+ const esf=D.map((x,i)=>{const r=+rp[`${i}:${who}:treino`];if(!r)return null;const s=who==="power"?x.power:(x.pace[opt(i)]||x.pace.a);return `${AB[i]} ${r}/10 (planejado ${+s.rpe||"?"})`}).filter(Boolean);
+ const pS=D.map((_,i)=>prontScore(pr[`${i}:${who}`])).filter(Boolean);
+ const hc=historicoCargas(who).slice(-8).map(x=>`${x.ex} ${num(x.kg)} kg × ${x.reps} em ${fmt(new Date(x.data+"T12:00:00"))} (1RM estimado ${num(x.rm)} kg)`);
+ if(!esf.length&&!pS.length&&!hc.length)return `Desempenho registrado do "${who}": nada registrado ainda (esforço, prontidão e cargas).`;
+ return `Desempenho registrado do "${who}" na semana aberta: carga sRPE ${cg.total}; esforço real ${esf.join(", ")||"não registrado"}; prontidão média ${pS.length?Math.round(sum(pS)/pS.length)+" de 100":"não registrada"}. Cargas recentes do exercício principal: ${hc.join("; ")||"nenhuma"}. Use para progredir: esforço bem acima do planejado ou prontidão baixa pedem segurar ou reduzir; esforço abaixo do planejado ou recorde de 1RM permitem subir 2,5% a 5% na carga do principal. Quando houver carga registrada, prescreva o principal em kg.`;
 }
 /* confere o tempo real (KPI) das sessões que têm faixa definida; devolve a lista do que ficou fora */
 function foraDaFaixa(lista){
@@ -1630,6 +1784,8 @@ Semana atual (JSON, mesmo formato que você deve devolver):
 ${JSON.stringify(state.week)}
 
 Registro da semana atual: ${resumo()}
+${desempenhoIA("power")}
+${desempenhoIA("pace")}
 Resultados importados (realizado): ${["pace","power"].map(w=>state.week.dias.map((_,i)=>acts(w,i).map(a=>`${w} ${DIAS[i]}: ${a.titulo||a.tipo} ${a.km||0} km ${a.tempo||""} pace ${a.pace||"-"} FC ${a.fc||"-"}`).join("; ")).filter(Boolean).join("; ")).filter(Boolean).join("; ")||"nenhum"}
 Biblioteca de treinos do treinador (prefira usar e adaptar estes treinos, mantendo os exercícios e ajustando cargas e volume; se usar um, copie os blocos dele):
 ${libForPrompt()}
@@ -1899,6 +2055,10 @@ view.addEventListener("click",e=>{
  if(t.dataset.dietWho!==undefined){state.dietWho=t.dataset.dietWho;state.dietDraft=null;render();return}
  if(t.dataset.go!==undefined){state.dia=+t.dataset.go;state.editing=null;state.tab="dia";render();scrollTo(0,0);return}
  if(t.dataset.agua){addAgua(t.dataset.agua,+t.dataset.ml||0);return}
+ if(t.dataset.rpe){setRpe(t.dataset.rpe,+t.dataset.v);return}
+ if(t.dataset.pr){setPront(t.dataset.pr,t.dataset.q,+t.dataset.v);return}
+ if(t.dataset.act==="carga-salvar"){salvarCarga(t.closest(".form-carga"));return}
+ if(t.dataset.act==="carga-edit"){state.cargaEdit=t.dataset.k;render();return}
  if(t.dataset.resNav!==undefined){const id=resIds()[+t.dataset.resNav];if(id){state.rh.sel=id;render();loadSemRH(id)}return}
  if(t.dataset.resWho!==undefined){state.rh.who=t.dataset.resWho;render();return}
  if(t.dataset.act==="res-reload"){state.rh.loaded=false;render();return}
@@ -1985,6 +2145,8 @@ view.addEventListener("click",e=>{
 });
 view.addEventListener("change",e=>{
  if(e.target.id==="res-week"){state.rh.sel=e.target.value;render();loadSemRH(e.target.value);return}
+ if(e.target.dataset.prfc){const k=e.target.dataset.prfc,fc=parseInt(e.target.value)||0;state.log.prontidao=state.log.prontidao||{};(state.log.prontidao[k]=state.log.prontidao[k]||{}).fc=fc;saveLog({prontidao:{[k]:{fc}}});return}
+ if(e.target.dataset.cg)return;
  const k=e.target.dataset.k;
  if(k){setC(k,e.target.checked);if(state.tab==="dia"&&/:(treino|corrida)$/.test(k))render();return}
  const c=e.target.dataset.cfg;if(!c)return;const val=e.target.value.trim();
@@ -2007,7 +2169,7 @@ document.getElementById("fileIn").addEventListener("change",async e=>{const f=e.
 
 /* Inicialização e Observadores em Tempo Real */
 function applyCfg(c){if(!c)return;if(Array.isArray(c.paces))state.cfg.paces=c.paces;if(c.nomes)state.cfg.nomes={...state.cfg.nomes,...c.nomes};if(c.pesos)state.cfg.pesos={...state.cfg.pesos,...c.pesos};if(typeof c.prova==="string")state.cfg.prova=c.prova;if(typeof c.geminiKey==="string"&&c.geminiKey){state.cfg.geminiKey=c.geminiKey;localStorage.setItem("gemini_api_key",c.geminiKey)}}
-function applyLog(l){state.log=l&&(l.chk||l.agua)?{chk:l.chk||{},opt:l.opt||{},dietStatus:l.dietStatus||{},dietObs:l.dietObs||{},agua:l.agua||{}}:{chk:{},opt:{},dietStatus:{},dietObs:{},agua:{}}}
+function applyLog(l){l=l||{};state.log={chk:l.chk||{},opt:l.opt||{},dietStatus:l.dietStatus||{},dietObs:l.dietObs||{},agua:l.agua||{},rpe:l.rpe||{},prontidao:l.prontidao||{},cargas:l.cargas||{}}}
 
 let unsubWeek=[];
 function bindWeekWatchers(){
