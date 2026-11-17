@@ -96,7 +96,14 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .stats b{color:var(--ink);font-weight:700;font-stretch:80%;font-size:1.05rem}
 .bl{margin-top:14px}
 .bl h4{margin:0 0 4px;font-size:.88rem;font-weight:700}
-.bl ul{margin:0;padding-left:18px} .bl li{margin:5px 0;font-size:.95rem}
+.bl ul,.bl ol{margin:0;padding-left:20px} .bl li{margin:5px 0;font-size:.95rem}
+.bl ol li::marker{font-weight:700;color:var(--muted)}
+.como{margin:0 0 6px;font-size:.84rem;line-height:1.4;color:var(--ink);background:var(--surface);border-left:3px solid var(--line-2);border-radius:4px;padding:5px 9px}
+.pres{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.82rem;color:var(--muted);margin-top:1px}
+.pres .cg{color:var(--ink)}
+.bl li.princ{background:color-mix(in srgb,var(--ok) 7%,transparent);border-radius:6px;padding:3px 6px;margin-left:-6px}
+.pbadge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 45%,var(--line));border-radius:999px;padding:0 7px;vertical-align:1px}
+.sug{display:block;font-size:.82rem;color:var(--ok);margin-top:1px}
 .how{display:block;font-size:.84rem;color:var(--muted);line-height:1.4;margin-top:1px}
 .desc{margin:0 0 6px;color:var(--muted);font-size:.93rem;max-width:62ch}
 .steps{list-style:none;margin:12px 0 0;padding:0;counter-reset:s}
@@ -879,9 +886,73 @@ function render(){
  ({dia:vDia,semana:vSemana,painel:vPainel,resultados:vRes,nutricao:vNutri,biblioteca:vBib,nova:vNova})[state.tab](document.getElementById("view"));
 }
 
-function item(i,pace){const t=typeof i==="string"?i:(i&&i.t)||"",d=(i&&typeof i==="object"&&i.d)||howOf(t);return `<li>${rich(t,pace)}${d?`<span class="how">${esc(nm(d))}</span>`:""}</li>`}
+/* ===== Estrutura do treino: exercício principal, carga sugerida e forma de execução de cada bloco ===== */
+const txtI=i=>typeof i==="string"?i:(i&&i.t)||"";
+const ehForca=(i,b)=>i&&typeof i==="object"?+i.reps>0&&+i.series>0&&!(+b.voltas>1):/\d+\s*[×x]\s*\d+/.test(txtI(i));
+const aqBloco=b=>/aquec|ativa[çc]|mobilid|alonga|rolo|solt/i.test(b.nome||"");
+/* principal: o item marcado pela IA ("principal":true); sem marcação, o 1º exercício de força fora do aquecimento */
+function principalDe(s){
+ const bl=(s&&s.blocos)||[];
+ for(const b of bl)for(const i of b.itens||[])if(i&&typeof i==="object"&&i.principal)return i;
+ for(const b of bl){if(aqBloco(b))continue;for(const i of b.itens||[])if(ehForca(i,b))return i}
+ return null;
+}
+const MODOS={series:"Por séries",circuito:"Em sequência",superserie:"Superséries",emom:"EMOM",amrap:"AMRAP"};
+function modoDe(b){
+ const m=String(b.modo||"").toLowerCase().replace(/[^a-z]/g,"");if(MODOS[m])return m;
+ if(+b.voltas>1||/volta|round|circuito/i.test(b.nome||""))return "circuito";
+ if(aqBloco(b))return "";
+ return (b.itens||[]).some(i=>ehForca(i,b))?"series":"";
+}
+const segTxt=s=>s>=60?(s%60?`${Math.floor(s/60)}'${s%60}"`:`${s/60} min`):`${s} s`;
+function comoBloco(b){
+ const m=modoDe(b);if(!m)return "";
+ if(b.como)return `<b>${MODOS[m]}:</b> ${esc(nm(b.como))}`;
+ const it=b.itens||[],n=it.length,v=+b.voltas||0,ult=it[n-1],dfim=ult&&typeof ult==="object"?+ult.desc||0:0;
+ if(m==="circuito")return `<b>Em sequência:</b> faça ${n>1?`do 1 ao ${n}`:"o exercício"} um atrás do outro, sem parar${v>1?`, por ${v} voltas`:""}${dfim?`; descanse ${segTxt(dfim)} ao fim de cada volta`:"; descanse só ao fim de cada volta"}.`;
+ if(m==="superserie")return `<b>Superséries:</b> faça os exercícios em pares (1+2, 3+4) sem pausa entre eles e descanse depois do par.`;
+ if(m==="emom")return `<b>EMOM:</b> no início de cada minuto faça o indicado e descanse o que sobrar do minuto.`;
+ if(m==="amrap")return `<b>AMRAP:</b> repita a sequência o máximo de voltas possível no tempo, sem pausa entre os exercícios.`;
+ return `<b>Por séries:</b> faça todas as séries de um exercício, com o descanso indicado, antes de passar ao próximo.`;
+}
+/* carga sugerida: a da IA ("carga"); sem ela, orientação por repetições e esforço da sessão (RIR = repetições sobrando) */
+function cargaPadrao(i,b,s){
+ const t=txtI(i);if(aqBloco(b)||/\d\s*%|\d\s*kg|peso do corpo/i.test(t))return "";
+ const circ=+b.voltas>1||modoDe(b)==="circuito",reps=typeof i==="object"?+i.reps||0:+((t.match(/[×x]\s*(\d+)/)||[])[1]||0);
+ if(!reps||!(ehForca(i,b)||circ))return "";
+ if(/prancha|dead bug|bird dog|clamshell|ponte de glúteo sem|polichinelo|hollow/i.test(t))return "";
+ if((+s.rpe||5)<=4)return "leve: termine sobrando 4 ou mais repetições";
+ if(circ)return "moderada: a que permite fazer as repetições sem parar";
+ if(reps<=6)return "pesada: termine sobrando 1 a 2 repetições (RIR 1–2)";
+ if(reps<=12)return "moderada a pesada: termine sobrando 2 repetições (RIR 2)";
+ return "moderada: termine sobrando 3 repetições (RIR 3)";
+}
+/* sugestão em kg para o principal a partir do último registro (1RM estimado) e do esforço daquele treino */
+function sugestaoHist(i,ctx){
+ if(!ctx||!ctx.who)return "";
+ if(!state.hist&&!state.histLoading)setTimeout(loadHist,0);
+ const nome=nomeEx(txtI(i)).toLowerCase(),ate=addDias(state.week.id,ctx.d);
+ const h=historicoCargas(ctx.who).filter(x=>x.ex.toLowerCase()===nome&&x.data<ate);if(!h.length)return "";
+ const u=h[h.length-1],r=(typeof i==="object"&&+i.reps)||+((txtI(i).match(/[×x]\s*(\d+)/)||[])[1]||0)||u.reps;
+ /* mesma intensidade do último registro convertida para as repetições de hoje; sobe 2,5% se o treino foi fácil (esforço até 7) e reduz 5% se foi quase máximo (9 ou 10) */
+ const sw=semanaDe(u.id),esf=+(((sw&&sw.log&&sw.log.rpe)||{})[`${u.d}:${ctx.who}:treino`])||0;
+ const f=!esf?1:esf<=7?1.025:esf>=9?0.95:1,kg=Math.round(u.rm/(1+Math.min(r,12)/30)*f*2)/2;
+ const pq=!esf?"":esf<=7?`, esforço ${esf}/10: pode subir`:esf>=9?`, esforço ${esf}/10: segure um pouco`:`, esforço ${esf}/10: mantenha`;
+ return `Sugestão de hoje: ~${num(kg)} kg para ${r} repetições (último: ${num(u.kg)} kg × ${u.reps} em ${fmt(new Date(u.data+"T12:00:00"))}${pq})`;
+}
+function item(i,pace,ctx){
+ const t=txtI(i),d=(i&&typeof i==="object"&&i.d)||howOf(t),o=i&&typeof i==="object"?i:{};
+ const pr=ctx&&ctx.principal===i,hs=pr?sugestaoHist(i,ctx):"",cg=o.carga||(ctx&&ctx.b&&!hs?cargaPadrao(i,ctx.b,ctx.s):"");
+ const de=+o.desc&&!(ctx&&ctx.b&&+ctx.b.voltas>1)?`descanso ${segTxt(+o.desc)}`:"";
+ const meta=[cg?`<span class="cg">Carga: ${esc(nm(cg))}</span>`:"",de?`<span>${de}</span>`:""].filter(Boolean).join("");
+ return `<li${pr?` class="princ"`:""}>${pr?`<span class="pbadge">★ Principal</span> `:""}${rich(t,pace)}${meta?`<span class="pres">${meta}</span>`:""}${hs?`<span class="sug">${esc(hs)}</span>`:""}${pr&&ctx.who?`<span class="how">Este é o exercício de referência do dia: registre a carga da série mais pesada depois do treino.</span>`:""}${d?`<span class="how">${esc(nm(d))}</span>`:""}</li>`;
+}
 const descP=s=>s.desc?`<p class="desc">${esc(nm(s.desc))}</p>`:"";
-function blocos(s,pace){return (s.blocos||[]).map(b=>`<div class="bl"><h4>${esc(nm(b.nome))}</h4><ul>${(b.itens||[]).map(i=>item(i,pace)).join("")}</ul></div>`).join("")}
+function blocos(s,pace,who,d){
+ const principal=principalDe(s);
+ return (s.blocos||[]).map(b=>{const c=comoBloco(b),L=modoDe(b)?"ol":"ul",ctx={b,s,principal,who,d};
+  return `<div class="bl"><h4>${esc(nm(b.nome))}</h4>${c?`<p class="como">${c}</p>`:""}<${L}>${(b.itens||[]).map(i=>item(i,pace,ctx)).join("")}</${L}></div>`}).join("");
+}
 const ck=(k,l)=>`<label><input type="checkbox" data-k="${k}" ${isC(k)?"checked":""}>${l}</label>`;
 
 /* ===== KPI de tempo real do treino =====
@@ -997,13 +1068,14 @@ function historicoCargas(who){
  return out.sort((a,b)=>a.data.localeCompare(b.data));
 }
 function cargaHTML(who,d,s){
- const exs=exForca(s);if(!exs.length)return "";
+ const pi=principalDe(s),pn=pi?nomeEx(txtI(pi)):"";
+ const exs=[...new Set([pn,...exForca(s)].filter(Boolean))];if(!exs.length)return "";
  const k=`${d}:${who}`,c=(state.log.cargas||{})[k];
  if(c&&!state.hist&&!state.histLoading)setTimeout(loadHist,0);/* histórico das semanas anteriores para comparar com o recorde */
  const ed=state.cargaEdit===k||!c;
  if(!ed){const rm=e1rm(+c.kg,+c.reps),ant=historicoCargas(who).filter(x=>x.ex.toLowerCase()===c.ex.toLowerCase()&&x.data<addDias(state.week.id,d));const melhor=ant.length?Math.max(...ant.map(x=>x.rm)):0;
   return `<div class="carga"><span>Principal: <b>${esc(c.ex)}</b> · ${num(c.kg)} kg × ${+c.reps} · 1RM estimado <b>${num(rm)} kg</b>${melhor?` <span class="dl ${rm>melhor?"up":rm<melhor?"down":""}">${rm>melhor?"▲ recorde":rm<melhor?"▼":"="} (antes ${num(melhor)} kg)</span>`:""}</span><button class="link" data-act="carga-edit" data-k="${k}">alterar</button></div>`}
- return `<div class="carga form-carga" data-k="${k}"><span class="rpe-t">Carga do exercício principal</span>
+ return `<div class="carga form-carga" data-k="${k}"><span class="rpe-t">${pn?`Carga do principal de hoje: <b>${esc(pn)}</b> (série mais pesada)`:"Carga do exercício principal"}</span>
   <select data-cg="ex" aria-label="Exercício">${exs.map(x=>`<option ${c&&c.ex===x?"selected":""}>${esc(x)}</option>`).join("")}</select>
   <input type="text" inputmode="decimal" data-cg="kg" placeholder="kg" value="${esc(c?String(c.kg).replace(".",","):"")}" aria-label="Carga em kg">
   <input type="number" inputmode="numeric" data-cg="reps" placeholder="reps" min="1" max="30" value="${esc(c?c.reps:"")}" aria-label="Repetições na série mais pesada">
@@ -1043,7 +1115,7 @@ function powerCard(s,d){
   <div class="kind"><span>${esc(s.tipo)}</span><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="power" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="power" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,"power")}${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}${kpiChip(s,"power",d)}</div>
-  ${blocos(s,false)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
+  ${blocos(s,false,"power",d)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
    ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${posTreinoHTML("power",d,s,"treino")}${aguaHTML("power",d)}
    <div class="sub">Plano alimentar (${esc(NP())})</div>${DIET_EWERTON.refeicoes.map(m=>ck(`${d}:power:${m.k}`,`${m.h} ${m.n}`)).join("")}
@@ -1067,7 +1139,7 @@ function optCard(p,d){
   <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="${o}" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="${o}" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,o)}${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,"pace",d)}</div>
-  ${blocos(s,true)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
+  ${blocos(s,true,"pace",d)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
    ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${posTreinoHTML("pace",d,s,"treino")}${aguaHTML("pace",d)}
    <div class="sub">Plano alimentar (${esc(NA())})</div>${MEALS_JOANNA.map(m=>ck(`${d}:pace:${m.k}`,`${m.h} ${m.n}`)).join("")}</div></div></article>`;
@@ -1624,7 +1696,7 @@ function resumo(){const D=state.week.dias,c=(w,k)=>D.filter((_,i)=>isC(`${i}:${w
  return `Power fez ${c("power","treino")} de ${N} treinos. Pace fez ${D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length} de ${D.filter(d=>d.pace.corrida).length} corridas e ${c("pace","treino")} de ${N} sessões complementares. Sono 7h+: Power ${c("power","sono")}, Pace ${c("pace","sono")} dias. Refeições: Power ${mealsPo} de ${DIET_EWERTON.refeicoes.length*N}, Pace ${mealsPa} de ${MEALS_JOANNA.length*N}.`}
 
 /* ===== Treinos individuais: refazer só de um atleta ===== */
-const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número (tempo real pelo KPI),"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","voltas":número (1 se não for circuito),"itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado","series":número,"reps":número (0 se for por tempo),"seg":segundos de trabalho por série quando for por tempo (ex.: prancha 40, bike 600),"desc":segundos de descanso depois de cada série,"lados":2 se for unilateral feito dos dois lados, senão 1}]}],"nota":"texto curto ou vazio"}`;
+const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número (tempo real pelo KPI),"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","voltas":número (1 se não for circuito),"modo":"series" (todas as séries de um exercício antes de passar ao próximo) | "circuito" (exercícios em sequência, um atrás do outro, descanso só ao fim da volta) | "superserie" (pares sem pausa) | "emom" | "amrap" (vazio em aquecimento e mobilidade),"como":"1 frase dizendo como executar o bloco, ex.: 'faça os 4 em sequência sem pausa e descanse 90 s ao fim de cada volta'","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado","series":número,"reps":número (0 se for por tempo),"seg":segundos de trabalho por série quando for por tempo (ex.: prancha 40, bike 600),"desc":segundos de descanso depois de cada série,"lados":2 se for unilateral feito dos dois lados, senão 1,"carga":"carga sugerida concreta: % do 1RM, kg (ex.: 'halteres de 10 a 12 kg cada', 'kettlebell 16 kg'), ou 'peso do corpo', sempre com quantas repetições devem sobrar (RIR)","principal":true SOMENTE no exercício-chave do dia}]}],"nota":"texto curto ou vazio"}. EXERCÍCIO PRINCIPAL: em toda sessão de força ou musculação marque exatamente 1 item com "principal":true (o levantamento mais importante, com séries e repetições, fora de circuito, ex.: agachamento, levantamento terra, supino, hip thrust); é nele que o atleta registra a carga. CARGA: todo exercício com carga externa precisa de "carga"; quando houver carga registrada no histórico, prescreva o principal em kg. MODO: todo bloco de treino precisa de "modo" e "como", deixando claro se os exercícios são feitos em sequência ou por séries`;
 /* regras de tempo real (KPI) que o app usa para conferir cada sessão */
 const KPI_SPEC=`TEMPO REAL (KPI): todo exercício precisa de "series", "reps" (ou "seg") e "desc"; blocos em circuito usam "voltas" (com series 1 em cada item). O app calcula o tempo real assim: cada repetição leva 4 s; exercício por tempo usa "seg"; soma os descansos; cada exercício de força (com repetições, fora de circuito) soma 60 s de preparação (ajustar carga, trocar de aparelho); em circuitos, 15 s de troca entre exercícios a cada volta. Aquecimento, cardio contínuo e mobilidade entram como item por tempo (series 1, reps 0, seg = duração). Exemplos da conta: 4 séries × 8 repetições com 60 s de descanso = 4×8×4 + 4×60 + 60 = 428 s (7,1 min); 3 séries × 10 por perna (lados 2) com 45 s = 3×2×10×4 + 3×45 + 60 = 435 s (7,3 min); prancha 3×40 s com 30 s = 3×40 + 3×30 = 210 s (3,5 min). Some item por item ANTES de responder e mire no MEIO da faixa pedida (ex.: 55 min numa faixa de 50 a 60). Monte séries, exercícios e descansos para o tempo real cair na faixa e coloque esse valor em "min".`;
 const PERFIL={
@@ -2120,10 +2192,10 @@ view.addEventListener("click",e=>{
    const lines=box.querySelector('[data-ef="itens"]').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    if(slot==="corrida"){target.passos=lines;}
    else{
-    /* exercícios que não mudaram mantêm descrição e números do KPI; blocos mantêm as voltas */
-    const velhos=new Map(),voltas=new Map();(target.blocos||[]).forEach(b=>{if(b.voltas)voltas.set(b.nome,b.voltas);(b.itens||[]).forEach(i=>{if(i&&typeof i==="object")velhos.set(i.t,i)})});
+    /* exercícios que não mudaram mantêm descrição e números do KPI; blocos mantêm voltas, modo e explicação */
+    const velhos=new Map(),voltas=new Map();(target.blocos||[]).forEach(b=>{voltas.set(b.nome,{voltas:b.voltas,modo:b.modo,como:b.como});(b.itens||[]).forEach(i=>{if(i&&typeof i==="object")velhos.set(i.t,i)})});
     const bls=[];let cur={nome:"Treino",itens:[]};
-    lines.forEach(ln=>{if(ln.startsWith("#")){if(cur.itens.length)bls.push(cur);const nome=ln.replace(/^#+\s*/,"")||"Bloco";cur={nome,itens:[]};if(voltas.has(nome))cur.voltas=voltas.get(nome)}else cur.itens.push(velhos.get(ln)||ln)});
+    lines.forEach(ln=>{if(ln.startsWith("#")){if(cur.itens.length)bls.push(cur);const nome=ln.replace(/^#+\s*/,"")||"Bloco";cur={nome,itens:[]};if(voltas.has(nome)){const m=voltas.get(nome);["voltas","modo","como"].forEach(x=>{if(m[x])cur[x]=m[x]})}}else cur.itens.push(velhos.get(ln)||ln)});
     if(cur.itens.length)bls.push(cur);
     target.blocos=bls;
    }
