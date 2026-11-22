@@ -1002,10 +1002,10 @@ function kpiMin(s){
  return Math.round(tot/60);
 }
 /* faixa de tempo real pedida para cada sessão: domingo regenerativo 40–50 min para os dois;
-   Joanna 50–60 min nos dias sem corrida e 15–20 min de complemento nos dias com corrida */
+   Joanna 60–70 min de segunda a sábado (inferiores pesados nos dias de corrida, superiores e core nos outros) */
 function faixa(who,d,day){
  if(d===6)return [40,50];
- if(who==="pace")return day&&day.pace&&day.pace.corrida?[15,20]:[50,60];
+ if(who==="pace")return [60,70];
  return null;
 }
 const minReal=s=>kpiMin(s)||+s.min||0;
@@ -1635,7 +1635,7 @@ function vNova(v){
  <div class="who-seg" role="group" aria-label="Para quem gerar"><button data-gen-who="ambos" aria-pressed="${gw==="ambos"}">Os dois</button><button data-gen-who="power" aria-pressed="${gw==="power"}">Só ${esc(NP())}</button><button data-gen-who="pace" aria-pressed="${gw==="pace"}">Só ${esc(NA())}</button></div>
  ${ind?`<p class="lead">Refaz só os treinos ${esc(doDa(gw))} na ${esc(state.week.nome)} (semana aberta). Os treinos ${esc(doDa(gw==="power"?"pace":"power"))}, as corridas da planilha e todas as marcações continuam iguais. Para trocar um dia só, use "Refazer com IA" no cartão do dia.</p>`:""}
  <div ${ind?"hidden":""}>
- <p class="lead">Envie o print/PDF da planilha de corrida ou cole os treinos nos dias certos. O Gemini monta a semana inteira (mantendo a média de 50 a 60 min/dia para a ${esc(NA())}) e salva direto na nuvem para vocês dois.</p>
+ <p class="lead">Envie o print/PDF da planilha de corrida ou cole os treinos nos dias certos. O Gemini monta a semana inteira (treinos de força de 60 a 70 min para a ${esc(NA())}, com inferiores nos dias de corrida) e salva direto na nuvem para vocês dois.</p>
  ${!hasKey?`<div class="keybox"><div class="lbl" style="margin:0">Ativar geração com IA (Gemini)</div>
   <p class="sub" style="margin:4px 0 0;font-size:.86rem;color:var(--muted)">Cole uma única vez sua chave gratuita do <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> (ela fica sincronizada nos dois celulares):</p>
   <div class="keybox-row"><input type="password" id="nova-apikey" placeholder="AIzaSy..."><button class="btn sm" data-act="save-key">Salvar chave</button></div></div>`:""}
@@ -1678,23 +1678,28 @@ async function shrinkImage(blob,maxPx=2400000){
  }catch(e){return blob}
 }
 const IA_CHEIA="A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos.";
-async function geminiJson(prompt,images,signal){
+/* thinking: nível de raciocínio do Gemini. Importar arquivos é só transcrever, então usa "LOW" (bem mais rápido);
+   montar treinos precisa pensar (conta do KPI), então fica no padrão do modelo */
+async function geminiJson(prompt,images,signal,thinking){
  const apiKey=getApiKey();
  if(!apiKey&&!state.aiServer) throw {code:"no_key"};
  const parts=[{text:prompt}];
  if(images&&images.length){
-  for(let img of images){
-   /* vários prints dividem o limite de envio da Vercel (4,5 MB) */
-   if(!apiKey)img=await shrinkImage(img,Math.min(2400000,5000000/images.length));
-   const b64=await blobToBase64(img);
-   parts.push({inlineData:{mimeType:img.type||"image/jpeg",data:b64}});
-  }
+  /* reduz as fotos no aparelho, todas ao mesmo tempo: envio menor = resposta mais rápida, e o texto continua legível.
+     vários prints dividem o limite de envio da Vercel (4,5 MB) */
+  const imgs=await Promise.all(images.map(img=>shrinkImage(img,Math.min(2000000,5000000/images.length))));
+  const b64s=await Promise.all(imgs.map(blobToBase64));
+  imgs.forEach((img,i)=>parts.push({inlineData:{mimeType:img.type||"image/jpeg",data:b64s[i]}}));
  }
- const payload=JSON.stringify({contents:[{parts}],generationConfig:{responseMimeType:"application/json"}});
+ const gc={responseMimeType:"application/json"};
+ if(thinking)gc.thinkingConfig={thinkingLevel:thinking};
+ const payload=JSON.stringify({contents:[{parts}],generationConfig:gc});
  if(!apiKey&&payload.length>4300000) throw {code:"grande"};
  /* sem chave no aparelho, usa a chave guardada com segurança na Vercel (/api/gemini) */
  const url=apiKey?`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`:"/api/gemini";
  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:payload,signal});
+ /* se algum modelo de reserva não aceitar o nível de raciocínio, tenta de novo sem ele */
+ if(res.status===400&&thinking)return geminiJson(prompt,images,signal,null);
  if(!res.ok){
   if(res.status===400||res.status===403) throw {code:"bad_key"};
   if(res.status===429) throw {code:"rate_limited"};
@@ -1728,9 +1733,22 @@ const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objeti
 /* regras de tempo real (KPI) que o app usa para conferir cada sessão */
 const KPI_SPEC=`TEMPO REAL (KPI): todo exercício precisa de "series", "reps" (ou "seg") e "desc"; blocos em circuito usam "voltas" (com series 1 em cada item). O app calcula o tempo real assim: cada repetição leva 4 s; exercício por tempo usa "seg"; soma os descansos; cada exercício de força (com repetições, fora de circuito) soma 60 s de preparação (ajustar carga, trocar de aparelho); em circuitos, 15 s de troca entre exercícios a cada volta. Aquecimento, cardio contínuo e mobilidade entram como item por tempo (series 1, reps 0, seg = duração). Exemplos da conta: 4 séries × 8 repetições com 60 s de descanso = 4×8×4 + 4×60 + 60 = 428 s (7,1 min); 3 séries × 10 por perna (lados 2) com 45 s = 3×2×10×4 + 3×45 + 60 = 435 s (7,3 min); prancha 3×40 s com 30 s = 3×40 + 3×30 = 210 s (3,5 min). Some item por item ANTES de responder e mire no MEIO da faixa pedida (ex.: 55 min numa faixa de 50 a 60). Monte séries, exercícios e descansos para o tempo real cair na faixa e coloque esse valor em "min".`;
 const PERFIL={
- power:`Atleta "power": treina no Galpão Sport Center Fortaleza (box de Crossfit e Hyrox). Quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação de segunda a sexta; sábado é opcional. Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine, com pelo menos um dia leve de Z2. Domingo: sessão regenerativa de 40 a 50 min reais, combinando funcional leve, mobilidade e musculação leve (esforço 3 a 4, sem falha).`,
- pace:`Atleta "pace": treina na rede de academias Maxforma, uma academia convencional (aparelhos, cabos, polias, halteres, barras comuns, Smith e anilhas) com um espaço de crosstraining, mas SEM barra de LPO. Siga a metodologia HWPO com foco em FORÇA: exercícios compostos e unilaterais com progressão de carga, acessórios para cadeia posterior, glúteo, core e estabilidade de joelho e quadril, e condicionamento curto no espaço de crosstraining só com materiais comuns desse espaço (como kettlebell, caixa, medicine ball e peso do corpo). PROIBIDO para ela: levantamentos olímpicos e suas variações (snatch, clean, jerk, power clean, thruster com barra olímpica), sled push/pull, SkiErg, argolas e ginástica de box (muscle-up, kipping, toes to bar) ou qualquer movimento que só dá para fazer num box de Crossfit. É corredora; as corridas são definidas pelo treinador dela e NÃO podem ser alteradas. Para cada dia há duas opções: "a" musculação (cadeia posterior, superiores, core, estabilidade de joelho e quadril, sem pernas pesadas na véspera de corrida forte ou longão) e "b" funcional e core. Nos dias SEM corrida (segunda a sábado), as duas opções são TREINOS FORTES, de esforço 7 a 8, com cargas desafiadoras (1 a 2 repetições de reserva) e 50 a 60 min REAIS pelo KPI: não encha o treino com alongamento ou caminhada para completar o tempo, o volume vem de séries de trabalho. Nos dias COM corrida, "a" e "b" são complementos de 15 a 20 min reais. Domingo: regenerativo de 40 a 50 min reais, com "a" musculação leve e "b" funcional leve com mobilidade (esforço 3 a 4).`
+ power:`Atleta "power": treina no Galpão Sport Center Fortaleza (box de Crossfit e Hyrox). Quer melhorar a performance e manter a musculatura, com objetivo de competir no Hyrox Fortaleza 2027. Faz Crossfit, Hyrox e musculação de segunda a sexta; sábado é opcional. Trabalhe corrida comprometida, as 8 estações do Hyrox (SkiErg, sled push, sled pull, burpee broad jumps, remo, farmer's carry, sandbag lunges, wall balls), força estrutural, LPO e engine, com pelo menos um dia leve de Z2. Domingo: sessão regenerativa de 40 a 50 min reais, combinando funcional leve, mobilidade e musculação leve (esforço 3 a 4, sem falha).
+FORTALECIMENTO (repertório amplo): em pelo menos 3 dias da semana, inclua um bloco de fortalecimento de 12 a 20 min depois da parte principal, variando os exercícios a cada semana (não repita mais de um terço dos acessórios da semana atual e não use o mesmo acessório em dois dias da mesma semana). Repertório: unilaterais (agachamento búlgaro, step-up com barra, afundo andando com sandbag, terra romeno unilateral, pistol assistido, split squat com pausa); cadeia posterior (nordic curl, hip extension no GHD, good morning, terra romeno, hip thrust, reverse hyper, Jefferson curl leve); costas e pegada (remada pendlay, remada com kettlebell, barra fixa estrita com carga, pendurar na toalha, farmer's carry pesado, subida na corda); ombro e empurrar (strict press, Z-press, handstand push-up estrito, paralela com carga, landmine press); core (sit-up no GHD, L-sit, Pallof press, carry assimétrico, roda abdominal, Copenhagen); blindagem para corrida e Hyrox (panturrilha e sóleo pesados, tibial, adutores, isometria em afundo, sled drag de costas); hipertrofia para manter a musculatura (rosca, tríceps, elevação lateral, face pull, crucifixo).`,
+ pace:`Atleta "pace": corredora que treina na rede de academias Maxforma, uma academia convencional (aparelhos, cabos, polias, halteres, barras comuns, Smith e anilhas) com um espaço de crosstraining, mas SEM barra de LPO. PROIBIDO para ela: levantamentos olímpicos e suas variações (snatch, clean, jerk, power clean, thruster com barra olímpica), sled push/pull, SkiErg, argolas e ginástica de box (muscle-up, kipping, toes to bar) ou qualquer movimento que só dá para fazer num box de Crossfit. As corridas são definidas pelo treinador dela e NÃO podem ser alteradas.
+MÉTODO (força de alto rendimento para corredores, na estrutura da trilha HWPO Strong: principal pesado + acessórios, com progressão de carga): cada sessão de força segue a ordem 1) aquecimento e ativação específicos (8 a 10 min: mobilidade de quadril e tornozelo, ativação de glúteo e tibial); 2) potência e pliometria de baixo volume, antes de cansar (3 a 5 séries de poucas repetições, descanso completo); 3) levantamento PRINCIPAL pesado (1 ou 2 por sessão); 4) acessórios unilaterais e de cadeia posterior; 5) blindagem do corredor: panturrilha e sóleo com carga alta, tibial anterior, adutores, glúteo médio e isometrias de tendão; 6) core antirrotação e anti-extensão.
+PERIODIZAÇÃO em blocos de 4 semanas (a fase desta semana vem indicada no pedido): semana 1 acumulação (3 a 4 séries de 8 a 10, esforço 7, 2 a 3 repetições de reserva); semana 2 desenvolvimento (4 séries de 6 a 8, esforço 7 a 8); semana 3 intensificação (4 a 5 séries de 3 a 6, esforço 8 a 9, um pouco mais de pliometria); semana 4 descarga (volume cerca de 40% menor, mesma técnica, esforço 6). Os levantamentos PRINCIPAIS se mantêm durante o bloco para a carga progredir; acessórios e blindagem VARIAM toda semana.
+REPERTÓRIO (use bastante variedade: não repita mais de um terço dos acessórios da semana atual e não use o mesmo acessório em dois dias da mesma semana). Inferiores, joelho: agachamento livre com barra, agachamento frontal com barra comum, agachamento no Smith, hack, leg press unilateral, agachamento búlgaro, afundo reverso com déficit, step-up alto com halteres, split squat com pausa, agachamento cálice com tempo, cadeira extensora unilateral, sissy squat assistido, wall sit com carga. Inferiores, quadril: levantamento terra com barra comum ou trap bar, terra romeno com barra ou halteres, terra romeno unilateral, hip thrust com barra, glute bridge unilateral, good morning, mesa flexora, stiff no Smith, nordic curl assistido, extensão lombar a 45°, pull-through no cabo, kettlebell swing. Panturrilha, pé e tornozelo: panturrilha em pé no Smith, panturrilha sentada pesada (sóleo), panturrilha unilateral com halter, isometria de panturrilha, tibial com anilha ou no banco, caminhada na ponta dos pés com carga. Quadril e adutores: Copenhagen, adutora e abdutora na máquina, abdução no cabo, monster walk, clamshell com carga. Pliometria: pogo jumps, box jump, salto com contramovimento, salto horizontal, saltos laterais, skips, bounding curto, salto unilateral na caixa baixa. Superiores e tronco: supino com halteres, supino inclinado, flexão com carga, remada curvada, remada unilateral com halter, puxada na polia, barra fixa assistida, desenvolvimento com halteres, landmine press, face pull, remada no cabo, Pallof press, dead bug com carga, prancha lateral com abdução, farmer's carry, suitcase carry, roda abdominal, hollow hold, bird dog com carga.
+DIAS COM CORRIDA (segunda a sábado): a opção "a" é o treino de INFERIORES pesado (principal de joelho ou de quadril, alternando entre os dias de corrida da semana, mais pliometria, unilaterais e blindagem), concentrando o estresse das pernas no mesmo dia da corrida para os dias sem corrida servirem de recuperação. Na "desc", oriente: se a corrida for intervalado, tempo run ou longão, fazer a musculação depois, com pelo menos 6 h de intervalo (outro turno); se a corrida for leve (Z1 a Z2), a musculação pode vir antes. A opção "b" é a alternativa de inferiores no espaço de crosstraining (kettlebell, halteres, caixa e peso do corpo: unilaterais, pliometria, swings, carries e core), também forte. Em dia de longão muito longo, reduza um pouco o volume do principal, sem sair da faixa de tempo.
+DIAS SEM CORRIDA (segunda a sábado): sem pernas pesadas (no máximo glúteo médio, adutores, tibial e core leves). A opção "a" é SUPERIORES + core + blindagem leve; a opção "b" é funcional e core no espaço de crosstraining, com condicionamento de baixo impacto (remo, bike, kettlebell), sem saltos. NUNCA programe inferiores pesados na véspera de intervalado, tempo run ou longão.
+De segunda a sábado, as duas opções são TREINOS FORTES, de esforço 7 a 8 (ajustado pela fase do bloco), com cargas desafiadoras e 60 a 70 min REAIS pelo KPI: não encha o treino com alongamento ou caminhada para completar o tempo, o volume vem de séries de trabalho e de mais exercícios do repertório. Domingo: regenerativo de 40 a 50 min reais, com "a" musculação leve e "b" funcional leve com mobilidade (esforço 3 a 4).`
 };
+/* periodização da força da pace em blocos de 4 semanas, pelo número da semana */
+const numSemana=w=>parseInt(((w&&w.nome)||"").replace(/\D/g,""))||1;
+function faseBloco(n){
+ const f=["semana 1 de 4, ACUMULAÇÃO (3 a 4 séries de 8 a 10, esforço 7)","semana 2 de 4, DESENVOLVIMENTO (4 séries de 6 a 8, esforço 7 a 8)","semana 3 de 4, INTENSIFICAÇÃO (4 a 5 séries de 3 a 6, esforço 8 a 9)","semana 4 de 4, DESCARGA (volume cerca de 40% menor, esforço 6)"];
+ return `Fase do bloco de força do "pace" nesta semana: ${f[((n-1)%4+4)%4]}.`;
+}
 const quem=w=>w==="power"?NP():NA();
 const doDa=w=>w==="power"?`do ${NP()}`:`da ${NA()}`;
 function contextoParte(who){
@@ -1742,6 +1760,7 @@ function promptBase(who){
  return `Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Use os marcadores {power} e {pace} quando citar os atletas, nunca nomes. ${PERFIL[who]}
 Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
 Evite alta intensidade no mesmo dia em que o outro atleta tem treino forte, quando possível.
+${who==="pace"?faseBloco(numSemana(state.week)):""}
 ${KPI_SPEC}
 ${desempenhoIA(who)}
 Biblioteca de treinos do treinador (prefira adaptar estes treinos):
@@ -1873,6 +1892,7 @@ async function gerar(){
 
 ${PERFIL.power} No sábado, o power pode acompanhar o longão do {pace} em Z1–Z2.
 ${PERFIL.pace} Corridas: só as da planilha (não invente corridas).
+${faseBloco(n)}
 Paces da pace por zona: ${state.cfg.paces.map((p,i)=>`Z${i+1} ${p||"não informado"}`).join(", ")}.
 Regras: evite alta intensidade dos dois no mesmo dia quando possível; meta perto de 80% do trabalho aeróbico em Z1–Z2; progrida a carga do power em até 10%.
 ${KPI_SPEC}
@@ -2013,8 +2033,8 @@ async function readInput(file){
  return {text:await file.text()};
 }
 async function ask(prompt,input,signal){
- if(input.images) return geminiJson(prompt+"\n\nO conteúdo está nas imagens anexadas.",input.images,signal);
- return geminiJson(prompt+"\n\nConteúdo:\n"+input.text,null,signal);
+ if(input.images) return geminiJson(prompt+"\n\nO conteúdo está nas imagens anexadas.",input.images,signal,"LOW");
+ return geminiJson(prompt+"\n\nConteúdo:\n"+input.text,null,signal,"LOW");
 }
 const ERR=e=>({
  no_key:"Para ler PDFs ou imagens com IA, salve sua chave gratuita do Google AI Studio em Painel > Ajustes. (Planilhas CSV do Garmin funcionam sem chave!)",
@@ -2116,18 +2136,19 @@ async function importLib(input,nome){
  try{
   if(!input.images&&!(input.text||"").trim())throw {code:"vazio"};
   const chunks=input.images?[input]:(()=>{const t=input.text,out=[];for(let i=0;i<t.length;i+=18000)out.push({text:t.slice(i,i+18000)});return out})();
-  let total=0;
-  for(let c=0;c<chunks.length;c++){
-   say(id,`Organizando os treinos com o Gemini${chunks.length>1?` (parte ${c+1} de ${chunks.length})`:""}…`);
+  let total=0,feitas=0;
+  say(id,`Organizando os treinos com o Gemini${chunks.length>1?` (${chunks.length} partes ao mesmo tempo)`:""}…`);
+  /* as partes de um arquivo grande vão ao Gemini em paralelo (até 3 por vez), não uma depois da outra */
+  const lerParte=async c=>{
    const r=await ask(`Este conteúdo tem um ou mais treinos escritos por um treinador (Crossfit, musculação, Hyrox, funcional, corrida). Separe cada treino e transcreva fielmente, sem inventar exercícios, séries ou cargas. Responda APENAS JSON: {"treinos":[{"titulo":"curto","categoria":"Cross|Musculação|Hyrox|Funcional|Corrida|Mobilidade","para":"power se for de Crossfit, Hyrox ou força; pace se for de corrida ou fortalecimento para corredora; ambos se servir aos dois","desc":"1 frase simples com o objetivo do treino","tipo":"","min":número estimado,"rpe":1-10 estimado,"km":número,"zonas":[5 números de minutos em Z1..Z5 do trabalho aeróbico, zeros se não houver],"blocos":[{"nome":"","itens":[{"t":"exercício com séries, repetições, carga ou tempo","d":"1 frase curta de como executar o movimento, para um leigo não interpretar errado"}]}]}]}. Use português do Brasil.`,chunks[c]);
    const ts=(r&&r.treinos||[]).filter(okS);
-   for(const t of ts){
-    t.fonte=nome||"";t.criado=Date.now();t.zonas=t.zonas.slice(0,5);
-    t.id="l"+Date.now()+Math.random().toString(36).slice(2,6);
-    if(window.fb&&window.fb.ready){try{await window.fb.saveLib(t.id,t)}catch(e){}}
-    state.lib.push(t);total++;
-   }
-  }
+   ts.forEach(t=>{t.fonte=nome||"";t.criado=Date.now();t.zonas=t.zonas.slice(0,5);t.id="l"+Date.now()+Math.random().toString(36).slice(2,8)});
+   /* salva os treinos desta parte na nuvem todos juntos */
+   if(window.fb&&window.fb.ready)await Promise.all(ts.map(t=>window.fb.saveLib(t.id,t).catch(()=>{})));
+   state.lib.push(...ts);total+=ts.length;feitas++;
+   if(chunks.length>1)say(id,`Organizando os treinos com o Gemini (${feitas} de ${chunks.length} partes prontas)…`);
+  };
+  for(let c=0;c<chunks.length;c+=3)await Promise.all(chunks.slice(c,c+3).map((_,j)=>lerParte(c+j)));
   lsSet("biblioteca",state.lib);
   if(!total)throw {code:"vazio"};
   render();say(id,`${total} treino${total>1?"s":""} adicionado${total>1?"s":""} à biblioteca.`);
