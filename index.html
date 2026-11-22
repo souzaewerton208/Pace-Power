@@ -826,7 +826,7 @@ function dietSaved(k,p){
  clearTimeout(dietSaved.tm);
  state.dietMsg={k,t:"Salvando…",c:""};render();
  p.then(ok=>{
-  state.dietMsg={k,t:ok?"Salvo ✓ Aparece nos dois aparelhos.":"Salvo só neste aparelho: sem conexão com a nuvem.",c:ok?"ok":"err"};render();
+  state.dietMsg={k,t:ok?"Salvo ✓":"Salvo só neste aparelho: sem conexão com a nuvem.",c:ok?"ok":"err"};render();
   dietSaved.tm=setTimeout(()=>{if(state.dietMsg&&state.dietMsg.k===k){state.dietMsg=null;render()}},4000);
  });
 }
@@ -1540,7 +1540,8 @@ function vNutri(v){
  const curSt=(state.log.dietStatus&&state.log.dietStatus[stKey])||"";
  /* texto ainda não salvo tem prioridade sobre o que veio da nuvem */
  const draft=state.dietObsDraft&&state.dietObsDraft.k===stKey?state.dietObsDraft.v:null;
- const curObs=draft!==null?draft:((state.log.dietObs&&state.log.dietObs[stKey])||"");
+ /* a caixa fica vazia depois de salvar: a observação salva aparece no card do dia, logo abaixo */
+ const curObs=draft!==null?draft:"";
 
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Plano alimentar</h2>
   <p class="lead">${isPo?`Plano do ${esc(NP())}: ${esc(DIET_EWERTON.titulo)}.`:`Plano da nutricionista da ${esc(NA())}${state.diet.data?`, de ${esc(state.diet.data)}`:""}${state.diet.kcal?`, cerca de ${Number(state.diet.kcal).toLocaleString("pt-BR")} kcal por dia`:""}.`}</p></div>
@@ -2171,16 +2172,21 @@ view.addEventListener("click",e=>{
   state.log.dietStatus=state.log.dietStatus||{};
   state.log.dietStatus[k]=(state.log.dietStatus[k]===t.dataset.st)?"":t.dataset.st;
   const obsEl=document.getElementById("diet-obs-input");
-  if(obsEl){state.log.dietObs=state.log.dietObs||{};state.log.dietObs[k]=obsEl.value.trim();}
+  /* só grava a observação se algo foi digitado; caixa vazia não apaga a que já estava salva */
+  const obsTx=obsEl?obsEl.value.trim():"";
+  const part={dietStatus:{[k]:state.log.dietStatus[k]}};
+  if(obsTx){state.log.dietObs=state.log.dietObs||{};state.log.dietObs[k]=obsTx;part.dietObs={[k]:obsTx}}
   state.dietObsDraft=null;
-  dietSaved(k,saveLog({dietStatus:{[k]:state.log.dietStatus[k]},dietObs:{[k]:(state.log.dietObs||{})[k]||""}}));return;
+  dietSaved(k,saveLog(part));return;
  }
  if(act==="save-diet-obs"){
   const who=state.dietWho==="pace"?"pace":"power";
   const k=`${state.dia}:${who}`;
   const obsEl=document.getElementById("diet-obs-input");
+  const obsTx=obsEl?obsEl.value.trim():"";
+  if(!obsTx)return; /* nada digitado: não apaga a observação já salva */
   state.log.dietObs=state.log.dietObs||{};
-  state.log.dietObs[k]=obsEl?obsEl.value.trim():"";
+  state.log.dietObs[k]=obsTx;
   state.dietObsDraft=null;
   dietSaved(k,saveLog({dietObs:{[k]:state.log.dietObs[k]}}));return;
  }
