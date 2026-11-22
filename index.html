@@ -777,6 +777,7 @@ const state={
  readOnly:false,
  draft:null,
  dietDraft:null,
+ dietObsDraft:null,
  delConfirm:null,
  editing:null
 };
@@ -872,6 +873,8 @@ const paceDone=i=>{const c=state.week.dias[i].pace.corrida;return c?isC(i+":pace
 
 /* Renderização Principal */
 function render(){
+ /* se a observação da dieta está em edição, guarda foco e cursor para devolver depois de redesenhar */
+ const ae=document.activeElement,obsFocus=ae&&ae.id==="diet-obs-input"?{k:ae.dataset.k,s:ae.selectionStart,e:ae.selectionEnd}:null;
  const w=state.week;
  const syncBadge=`<span class="sync-dot ${state.connected?"on":""}" title="${state.connected?"Sincronizado na nuvem":"Modo offline"}"></span>`;
  const wkList=state.weeks.length>1
@@ -884,6 +887,7 @@ function render(){
  else r.innerHTML=`<span class="n">2027</span>Hyrox Fortaleza`;
  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===state.tab));
  ({dia:vDia,semana:vSemana,painel:vPainel,resultados:vRes,nutricao:vNutri,biblioteca:vBib,nova:vNova})[state.tab](document.getElementById("view"));
+ if(obsFocus){const ta=document.getElementById("diet-obs-input");if(ta&&ta.dataset.k===obsFocus.k){ta.focus();try{ta.setSelectionRange(obsFocus.s,obsFocus.e)}catch(e){}}}
 }
 
 /* ===== Estrutura do treino: exercício principal, carga sugerida e forma de execução de cada bloco ===== */
@@ -1522,7 +1526,9 @@ function vNutri(v){
  const d=state.dia;
  const stKey=`${d}:${who}`;
  const curSt=(state.log.dietStatus&&state.log.dietStatus[stKey])||"";
- const curObs=(state.log.dietObs&&state.log.dietObs[stKey])||"";
+ /* texto ainda não salvo tem prioridade sobre o que veio da nuvem */
+ const draft=state.dietObsDraft&&state.dietObsDraft.k===stKey?state.dietObsDraft.v:null;
+ const curObs=draft!==null?draft:((state.log.dietObs&&state.log.dietObs[stKey])||"");
 
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Plano alimentar</h2>
   <p class="lead">${isPo?`Plano do ${esc(NP())}: ${esc(DIET_EWERTON.titulo)}.`:`Plano da nutricionista da ${esc(NA())}${state.diet.data?`, de ${esc(state.diet.data)}`:""}${state.diet.kcal?`, cerca de ${Number(state.diet.kcal).toLocaleString("pt-BR")} kcal por dia`:""}.`}</p></div>
@@ -1555,7 +1561,7 @@ function vNutri(v){
   </div>
 
   <div class="diet-obs-row">
-   <textarea id="diet-obs-input" placeholder="Observações do dia (ex.: jantei fora do plano, tomei 5g de creatina, bati 3L de água...)">${esc(curObs)}</textarea>
+   <textarea id="diet-obs-input" data-k="${esc(stKey)}" placeholder="Observações do dia (ex.: jantei fora do plano, tomei 5g de creatina, bati 3L de água...)">${esc(curObs)}</textarea>
    <button class="btn sm" data-act="save-diet-obs">Salvar observação</button>
   </div>
 
@@ -2153,6 +2159,7 @@ view.addEventListener("click",e=>{
   state.log.dietStatus[k]=(state.log.dietStatus[k]===t.dataset.st)?"":t.dataset.st;
   const obsEl=document.getElementById("diet-obs-input");
   if(obsEl){state.log.dietObs=state.log.dietObs||{};state.log.dietObs[k]=obsEl.value.trim();}
+  state.dietObsDraft=null;
   saveLog({dietStatus:{[k]:state.log.dietStatus[k]},dietObs:{[k]:(state.log.dietObs||{})[k]||""}});render();return;
  }
  if(act==="save-diet-obs"){
@@ -2161,6 +2168,7 @@ view.addEventListener("click",e=>{
   const obsEl=document.getElementById("diet-obs-input");
   state.log.dietObs=state.log.dietObs||{};
   state.log.dietObs[k]=obsEl?obsEl.value.trim():"";
+  state.dietObsDraft=null;
   saveLog({dietObs:{[k]:state.log.dietObs[k]}});render();return;
  }
  if(act==="hist-reload"){state.hist=null;render();return}
@@ -2214,6 +2222,10 @@ view.addEventListener("click",e=>{
  if(t.dataset.cat){state.libFilter=t.dataset.cat;render();return}
  if(t.id==="gerar")gerar(); if(t.id==="parar")ctl?.abort(); if(t.id==="usar")usar();
  if(t.id==="desc"){state.draft=null;document.getElementById("prev").innerHTML="";document.getElementById("gst").textContent=""}
+});
+/* guarda o rascunho da observação a cada tecla, para não perder o texto se a tela for redesenhada */
+view.addEventListener("input",e=>{
+ if(e.target.id==="diet-obs-input")state.dietObsDraft={k:e.target.dataset.k,v:e.target.value};
 });
 view.addEventListener("change",e=>{
  if(e.target.id==="res-week"){state.rh.sel=e.target.value;render();loadSemRH(e.target.value);return}
