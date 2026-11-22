@@ -288,6 +288,8 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .status-group button[data-st="off"][aria-pressed="true"]{border-color:var(--z5);background:color-mix(in srgb,var(--z5) 12%,var(--surface));color:var(--z5)}
 
 .diet-obs-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.diet-save-msg{flex-basis:100%;font-size:.85rem;font-weight:650;color:var(--muted);min-height:1.3em}
+.diet-save-msg.ok{color:var(--ok)} .diet-save-msg.err{color:var(--warn)}
 .diet-obs-row textarea{flex:1;min-width:240px;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-md);padding:9px 12px;resize:vertical;min-height:58px}
 
 .diet-week-cards{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px}
@@ -778,6 +780,7 @@ const state={
  draft:null,
  dietDraft:null,
  dietObsDraft:null,
+ dietMsg:null,
  delConfirm:null,
  editing:null
 };
@@ -815,8 +818,17 @@ function save(p,d){
 /* grava só o pedaço que mudou no registro da semana, sem apagar o que o outro marcou */
 function saveLog(part){
  lsSet(pLog(),state.log);
- if(!window.fb||!window.fb.ready||state.readOnly) return;
- window.fb.merge(pLog(),part).then(syncOk).catch(fbFail);
+ if(!window.fb||!window.fb.ready||state.readOnly) return Promise.resolve(false);
+ return window.fb.merge(pLog(),part).then(()=>{syncOk();return true}).catch(e=>{fbFail(e);return false});
+}
+/* mostra no diário da dieta se o registro foi salvo na nuvem ou só neste aparelho */
+function dietSaved(k,p){
+ clearTimeout(dietSaved.tm);
+ state.dietMsg={k,t:"Salvando…",c:""};render();
+ p.then(ok=>{
+  state.dietMsg={k,t:ok?"Salvo ✓ Aparece nos dois aparelhos.":"Salvo só neste aparelho: sem conexão com a nuvem.",c:ok?"ok":"err"};render();
+  dietSaved.tm=setTimeout(()=>{if(state.dietMsg&&state.dietMsg.k===k){state.dietMsg=null;render()}},4000);
+ });
 }
 /* plano: sempre guarda a semana; só vira a "semana atual" dos dois se for a atual */
 function savePlan(){
@@ -1563,6 +1575,7 @@ function vNutri(v){
   <div class="diet-obs-row">
    <textarea id="diet-obs-input" data-k="${esc(stKey)}" placeholder="Observações do dia (ex.: jantei fora do plano, tomei 5g de creatina, bati 3L de água...)">${esc(curObs)}</textarea>
    <button class="btn sm" data-act="save-diet-obs">Salvar observação</button>
+   <div class="diet-save-msg ${state.dietMsg&&state.dietMsg.k===stKey?esc(state.dietMsg.c):""}" role="status" aria-live="polite">${state.dietMsg&&state.dietMsg.k===stKey?esc(state.dietMsg.t):""}</div>
   </div>
 
   <div class="diet-week-cards">
@@ -2160,7 +2173,7 @@ view.addEventListener("click",e=>{
   const obsEl=document.getElementById("diet-obs-input");
   if(obsEl){state.log.dietObs=state.log.dietObs||{};state.log.dietObs[k]=obsEl.value.trim();}
   state.dietObsDraft=null;
-  saveLog({dietStatus:{[k]:state.log.dietStatus[k]},dietObs:{[k]:(state.log.dietObs||{})[k]||""}});render();return;
+  dietSaved(k,saveLog({dietStatus:{[k]:state.log.dietStatus[k]},dietObs:{[k]:(state.log.dietObs||{})[k]||""}}));return;
  }
  if(act==="save-diet-obs"){
   const who=state.dietWho==="pace"?"pace":"power";
@@ -2169,7 +2182,7 @@ view.addEventListener("click",e=>{
   state.log.dietObs=state.log.dietObs||{};
   state.log.dietObs[k]=obsEl?obsEl.value.trim():"";
   state.dietObsDraft=null;
-  saveLog({dietObs:{[k]:state.log.dietObs[k]}});render();return;
+  dietSaved(k,saveLog({dietObs:{[k]:state.log.dietObs[k]}}));return;
  }
  if(act==="hist-reload"){state.hist=null;render();return}
  if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace",true);
