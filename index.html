@@ -781,6 +781,7 @@ const state={
  dietDraft:null,
  dietObsDraft:null,
  dietMsg:null,
+ resDraft:null,
  delConfirm:null,
  editing:null
 };
@@ -1139,7 +1140,7 @@ function powerCard(s,d){
   <div class="kind"><span>${esc(s.tipo)}</span><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="power" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="power" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,"power")}${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}${kpiChip(s,"power",d)}</div>
-  ${blocos(s,false,"power",d)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km)}`}</div>
+  ${blocos(s,false,"power",d)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km,"power",d)}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
    ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${posTreinoHTML("power",d,s,"treino")}${aguaHTML("power",d)}
    <div class="sub">Plano alimentar (${esc(NP())})</div>${DIET_EWERTON.refeicoes.map(m=>ck(`${d}:power:${m.k}`,`${m.h} ${m.n}`)).join("")}
@@ -1152,7 +1153,7 @@ function runCard(r,d){
   ${isEd?editFormHTML(r,d,"corrida",true):`<h3>${esc(r.titulo)}</h3>${descP(r)}
   <div class="stats"><span><b>${num(r.km)}</b> km</span><span>~<b>${+r.min||0}</b> min</span>${r.obs?`<span>${esc(r.obs)}</span>`:""}</div>
   <ol class="steps">${(r.passos||[]).map(p=>`<li><span>${rich(p,true)}</span></li>`).join("")}</ol>
-  ${acts("pace",d).some(a=>a.run)?realHTML(acts("pace",d).filter(a=>a.run),+r.km):`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="pace">Importar resultado do Garmin</button></p>`}<div class="upl" id="upl-res"></div>`}</div>
+  ${acts("pace",d).some(a=>a.run)?realHTML(acts("pace",d).filter(a=>a.run),+r.km,"pace",d):`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="pace">Importar resultado (você confere em nome de quem antes de salvar)</button></p>`}<div class="upl" id="upl-res"></div>${resDraftHTML()}`}</div>
   <div class="checks"><div class="chk">${ck(d+":pace:corrida","Corrida feita")}${posTreinoHTML("pace",d,r,"corrida")}</div></div></article>`;
 }
 function optCard(p,d){
@@ -1163,7 +1164,7 @@ function optCard(p,d){
   <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div><span class="card-acts"><button class="edit-btn ai" data-act="redo-card" data-slot="${o}" data-d="${d}">Refazer com IA</button><button class="edit-btn" data-act="edit-card" data-slot="${o}" data-d="${d}">Editar</button></span></div>
   ${redoBox(d,o)}${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,"pace",d)}</div>
-  ${blocos(s,true,"pace",d)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0)}`}</div>
+  ${blocos(s,true,"pace",d)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0,"pace",d)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
    ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${posTreinoHTML("pace",d,s,"treino")}${aguaHTML("pace",d)}
    <div class="sub">Plano alimentar (${esc(NA())})</div>${MEALS_JOANNA.map(m=>ck(`${d}:pace:${m.k}`,`${m.h} ${m.n}`)).join("")}</div></div></article>`;
@@ -1228,7 +1229,7 @@ function vPainel(v){
  const all=["pace","power"].flatMap(w=>D.flatMap((_,i)=>acts(w,i).map(a=>({...a,w,i}))));
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Painel</h2><p class="lead">Volume e intensidade planejados, resultados importados e o que já foi marcado nos checklists.</p></div>
   <div class="btns"><button class="btn sm" data-act="imp-res" data-who="pace">Importar resultados da ${esc(NA())}</button><button class="btn sm ghost" data-act="imp-res" data-who="power">Importar do ${esc(NP())}</button></div></div>
- <div class="upl" id="upl-res"></div>
+ <div class="upl" id="upl-res"></div>${resDraftHTML()}
  <div class="grid">
   <div class="panel wide"><div class="tool" style="margin:0 0 10px"><div><h3 style="margin:0">Avaliação da semana</h3><p class="sub" style="margin:2px 0 0">Como está o aproveitamento até agora. Toque em cada item para ver o detalhe.</p></div><button class="btn sm ghost" data-tab-go="resultados">Histórico e análise do treinador</button></div>
    <div class="aval-grid">${["pace","power"].map(w=>avalSemanaHTML(state.week,state.log,state.res,w)).join("")}</div></div>
@@ -1978,9 +1979,10 @@ async function importRunSheet(file){
 
 /* Resultados do Garmin / Strava */
 const acts=(w,d)=>(state.res[w]&&state.res[w][d])||[];
-function realHTML(list,planKm){
+const resKey=x=>[x.data,x.km,x.tempo].join("|");
+function realHTML(list,planKm,who,d){
  return list.map(a=>{const diff=planKm&&+a.km?(+a.km-planKm):null;
-  return `<div class="real"><p class="t">Realizado${a.fonte?` (${esc(a.fonte)})`:""}${a.titulo?`: ${esc(a.titulo)}`:""}</p>
+  return `<div class="real"><p class="t">Realizado${a.fonte?` (${esc(a.fonte)})`:""}${a.titulo?`: ${esc(a.titulo)}`:""}${who?` <button class="link" style="float:right;color:var(--muted)" data-act="del-res" data-who="${who}" data-d="${d}" data-key="${esc(resKey(a))}">Remover</button>`:""}</p>
   <div class="stats">${+a.km?`<span><b>${num((+a.km).toFixed(2))}</b> km</span>`:""}${a.tempo?`<span><b>${esc(a.tempo)}</b></span>`:""}${a.pace?`<span>pace <b>${esc(a.pace)}</b>/km</span>`:""}${a.fc?`<span>FC média <b>${esc(a.fc)}</b></span>`:""}</div>
   ${diff!==null?`<div class="cmp">${Math.abs(diff)<0.05?"Distância igual à planejada":(diff>0?"+":"−")+num(Math.abs(diff).toFixed(2))+" km em relação ao planejado"}</div>`:""}</div>`}).join("");
 }
@@ -2070,7 +2072,31 @@ async function importRes(file,who){
    const r=await ask(`Extraia as atividades físicas deste conteúdo (exportação ou print de relógio, Garmin, Strava, planilha de treino etc.).${input.images&&input.images.length>1?" São vários prints: se mais de um mostrar a mesma atividade (mesma data e distância), junte as informações numa só, sem duplicar.":""} Responda APENAS JSON: {"fonte":"nome do app se identificável","atividades":[{"data":"AAAA-MM-DD","tipo":"corrida, musculação, bike...","titulo":"","km":número,"tempo":"h:mm:ss ou mm:ss","pace":"m:ss por km ou vazio","fc":"FC média ou vazio","run":true se for corrida}]}. Se o ano não aparecer, use ${new Date().getFullYear()}. Ignore atividades planejadas que não foram realizadas.`,input);
    list=(r&&r.atividades||[]).map(a=>({...a,data:isoDate(a.data),km:+a.km||0,run:a.run===true||RUN.test((a.tipo||"")+" "+(a.titulo||""))})).filter(a=>a.data);fonte=fonte||(r&&r.fonte)||"";}
   if(!list.length)throw {code:"vazio"};
-  const byWeek={};list.forEach(a=>{a.fonte=fonte||"importado";(byWeek[mondayOf(a.data)]=byWeek[mondayOf(a.data)]||[]).push(a)});
+  /* não salva direto: mostra o que foi lido e pede para confirmar em nome de quem (o relógio pode ser de outra pessoa) */
+  list.forEach(a=>{a.fonte=fonte||"importado"});
+  state.resDraft={list,who};say(id,"");render();
+ }catch(e){say(id,ERR(e))}
+}
+function resDraftHTML(){
+ const r=state.resDraft;if(!r)return "";
+ const nome=w=>w==="power"?NP():NA();
+ return `<div class="panel res-draft" style="margin:12px 0 18px"><h3>Confira antes de salvar</h3>
+  <p class="sub">${r.list.length} atividade${r.list.length>1?"s":""} lida${r.list.length>1?"s":""}. Em nome de quem salvar?</p>
+  <div class="diet-tabs" role="group" aria-label="Salvar em nome de">
+   <button class="pa" data-res-dono="pace" aria-pressed="${r.who==="pace"}"><i></i>${esc(NA())}</button>
+   <button class="po" data-res-dono="power" aria-pressed="${r.who==="power"}"><i></i>${esc(NP())}</button>
+  </div>
+  ${r.list.map(a=>`<div class="row"><span><b>${esc(fmt(new Date(a.data+"T12:00:00")))}</b> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" · "+esc(a.tempo):""}</span></div>`).join("")}
+  <p class="sub" style="margin-top:10px">Vai entrar só nos resultados ${r.who==="power"?"do":"da"} <b>${esc(nome(r.who))}</b>.</p>
+  <div class="actions"><button class="btn" data-act="res-salvar">Salvar em nome ${r.who==="power"?"do":"da"} ${esc(nome(r.who))}</button><button class="btn ghost" data-act="res-cancelar">Cancelar</button></div></div>`;
+}
+/* grava a importação conferida, só no nome escolhido */
+async function salvarRes(){
+ const id="upl-res",r=state.resDraft;if(!r)return;
+ state.resDraft=null;
+ const {list,who}=r;
+ try{
+  const byWeek={};list.forEach(a=>{(byWeek[mondayOf(a.data)]=byWeek[mondayOf(a.data)]||[]).push(a)});
   let nCur=0;const saves=[];
   for(const [wk,arr] of Object.entries(byWeek)){
    const path="resultados/v2-"+wk;const cur=wk===state.week.id?state.res:((await load(path))||{pace:{},power:{}});
@@ -2087,7 +2113,7 @@ async function importRes(file,who){
   const resumo=`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`;
   render();say(id,resumo+" Salvando…");
   const oks=await Promise.all(saves);
-  say(id,resumo+(oks.every(Boolean)?" Salvo ✓":" Salvo só neste aparelho: sem conexão com a nuvem."));
+  say(id,`Em nome ${doDa(who)}: `+resumo+(oks.every(Boolean)?" Salvo ✓":" Salvo só neste aparelho: sem conexão com a nuvem."));
  }catch(e){say(id,ERR(e))}
 }
 
@@ -2182,6 +2208,17 @@ view.addEventListener("click",e=>{
  if(t.dataset.agua){addAgua(t.dataset.agua,+t.dataset.ml||0);return}
  if(t.dataset.rpe){setRpe(t.dataset.rpe,+t.dataset.v);return}
  if(t.dataset.pr){setPront(t.dataset.pr,t.dataset.q,+t.dataset.v);return}
+ /* importação de resultados: escolher o dono, salvar ou cancelar; remover resultado lançado errado */
+ if(t.dataset.resDono!==undefined){if(state.resDraft){state.resDraft.who=t.dataset.resDono==="power"?"power":"pace";render()}return}
+ if(t.dataset.act==="res-salvar"){salvarRes();return}
+ if(t.dataset.act==="res-cancelar"){state.resDraft=null;say("upl-res","Importação cancelada. Nada foi salvo.");render();return}
+ if(t.dataset.act==="del-res"){
+  const w=t.dataset.who,d=+t.dataset.d,l=state.res[w]&&state.res[w][d];if(!l)return;
+  const i=l.findIndex(x=>resKey(x)===t.dataset.key);if(i<0)return;
+  if(!confirm(`Remover este resultado ${doDa(w)}?`))return;
+  l.splice(i,1);saveNow(pRes(),state.res).then(ok=>say("upl-res",ok?"Resultado removido ✓":"Removido só neste aparelho: sem conexão com a nuvem."));
+  state.rh.loaded=false;render();return;
+ }
  if(t.dataset.act==="carga-salvar"){salvarCarga(t.closest(".form-carga"));return}
  if(t.dataset.act==="carga-edit"){state.cargaEdit=t.dataset.k;render();return}
  if(t.dataset.resNav!==undefined){const id=resIds()[+t.dataset.resNav];if(id){state.rh.sel=id;render();loadSemRH(id)}return}
