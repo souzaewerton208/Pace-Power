@@ -1,5 +1,47 @@
 // Ponte segura para o Gemini: a chave fica guardada na Vercel (variável GEMINI_API_KEY)
 // e nunca aparece no código público do GitHub nem nos aparelhos.
+const crypto = require("crypto");
+const PROJETO = "power-e-pace";
+
+// Confere o comprovante de login do Firebase (ID token) sem bibliotecas extras:
+// assinatura RS256 com as chaves públicas do Google, projeto, emissor e validade.
+let certs = null, certsAte = 0;
+async function chavesGoogle() {
+  if (certs && Date.now() < certsAte) return certs;
+  const r = await fetch("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com");
+  certs = await r.json();
+  const m = (r.headers.get("cache-control") || "").match(/max-age=(\d+)/);
+  certsAte = Date.now() + (m ? +m[1] : 3600) * 1000;
+  return certs;
+}
+const b64url = (s) => Buffer.from(String(s).replace(/-/g, "+").replace(/_/g, "/"), "base64");
+async function conferirLogin(req) {
+  try {
+    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const [h, p, s] = token.split(".");
+    if (!h || !p || !s) return null;
+    const cab = JSON.parse(b64url(h).toString("utf8"));
+    const dados = JSON.parse(b64url(p).toString("utf8"));
+    if (cab.alg !== "RS256") return null;
+    const cert = (await chavesGoogle())[cab.kid];
+    if (!cert) return null;
+    const ok = crypto.createVerify("RSA-SHA256").update(h + "." + p).verify(cert, b64url(s));
+    const agora = Date.now() / 1000;
+    if (!ok || dados.aud !== PROJETO || dados.iss !== "https://securetoken.google.com/" + PROJETO || !dados.sub || dados.exp < agora) return null;
+    return dados;
+  } catch (e) { return null; }
+}
+// Quem pode usar a IA. Na Vercel, a variável ALLOWED_EMAILS (e-mails separados por vírgula) libera só essas
+// contas Google. Sem ela, qualquer pessoa logada no app (inclusive anônima) pode usar, como antes.
+async function autorizado(req) {
+  const quem = await conferirLogin(req);
+  if (!quem) return { status: 401, error: "Entre no app para usar a IA" };
+  const lista = String(process.env.ALLOWED_EMAILS || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean);
+  if (lista.length && !(quem.email && quem.email_verified && lista.includes(String(quem.email).toLowerCase())))
+    return { status: 403, error: "Esta conta não está liberada para usar a IA" };
+  return null;
+}
+
 module.exports = async (req, res) => {
   const KEY = process.env.GEMINI_API_KEY;
 
@@ -7,6 +49,8 @@ module.exports = async (req, res) => {
 
   // GET /api/gemini?modelos=1 lista os modelos que esta chave pode usar (só os nomes, nunca a chave)
   if (req.method === "GET" && q.modelos && KEY) {
+    const neg = await autorizado(req);
+    if (neg) return res.status(neg.status).json({ error: neg.error });
     try {
       const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { headers: { "x-goog-api-key": KEY } });
       const j = await r.json();
@@ -31,6 +75,10 @@ module.exports = async (req, res) => {
   let origemHost = "";
   try { origemHost = new URL(req.headers.origin || req.headers.referer || "").host; } catch (e) {}
   if (!host || origemHost !== host) return res.status(403).json({ error: "Origem não permitida" });
+
+  // E só atende quem está logado no app (e, com ALLOWED_EMAILS, só as contas liberadas)
+  const negado = await autorizado(req);
+  if (negado) return res.status(negado.status).json({ error: negado.error });
 
   // Monta o pedido aqui em vez de repassar o que chegou: só texto e imagens, resposta em JSON,
   // sem ferramentas extras e com limite de tamanho. Assim ninguém usa a chave para outra coisa.

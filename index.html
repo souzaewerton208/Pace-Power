@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="google" content="notranslate">
-<meta name="theme-color" content="#EDEFEE">
+<meta name="theme-color" content="#EEF1F7">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Pace &amp; Power">
@@ -12,7 +15,7 @@
 <title>Pace &amp; Power</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..100,400..900;1,62..100,900&display=swap" rel="stylesheet">
 <style>
 /* Design Tokens - Tema Claro Fixo para máxima legibilidade */
 :root{
@@ -527,8 +530,8 @@ body.sheet-aberto{overflow:hidden}
 <!-- Conexão com o Firebase (Projeto: power-e-pace) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBYOxtQ9u_c69GWOSzvO5z9aEdKaYVInjQ",
@@ -545,7 +548,11 @@ window.dbReady = new Promise(async (resolve) => {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    await signInAnonymously(auth);
+    /* login: quem já entrou com Google neste aparelho continua conectado (o Firebase guarda o login).
+       Sem login Google, entra como anônimo, como antes, até as regras do banco exigirem a conta Google. */
+    try { await getRedirectResult(auth); } catch (e) { console.warn("Login Google:", e); }
+    await new Promise((ok) => { const off = onAuthStateChanged(auth, () => { off(); ok(); }); });
+    if (!auth.currentUser) await signInAnonymously(auth);
 
     const refOf = (path) => {
       const parts = path.split("/").filter(Boolean);
@@ -594,6 +601,43 @@ window.dbReady = new Promise(async (resolve) => {
       async saveLib(id, data) {
         const dRef = doc(db, "artifacts", projectId, "public", "data", "biblioteca", id);
         await setDoc(dRef, JSON.parse(JSON.stringify(data)));
+      },
+      /* conta conectada neste aparelho */
+      user() {
+        const u = auth.currentUser;
+        return u ? { uid: u.uid, email: u.email || "", nome: u.displayName || "", anonimo: u.isAnonymous } : null;
+      },
+      /* comprovante de login enviado ao servidor da IA (ele confere quem está pedindo) */
+      async token() { return auth.currentUser ? auth.currentUser.getIdToken() : ""; },
+      async entrarGoogle() {
+        const p = new GoogleAuthProvider();
+        p.setCustomParameters({ prompt: "select_account" });
+        try { await signInWithPopup(auth, p); }
+        catch (e) {
+          /* app instalado na tela inicial às vezes bloqueia a janela: usa o redirecionamento */
+          if (e && /popup-blocked|operation-not-supported|cancelled-popup/.test(e.code || "")) { await signInWithRedirect(auth, p); return "redirect"; }
+          throw e;
+        }
+      },
+      async sair() { await signOut(auth); await signInAnonymously(auth); },
+      /* altera só os treinos indicados da semana, lendo a versão mais nova da nuvem antes de gravar:
+         assim o que o outro aparelho mudou em outros dias ou no outro atleta não se perde */
+      async patchPlan(path, muda, base) {
+        const ref = refOf(path);
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(ref);
+          const data = snap.exists() ? snap.data() : null;
+          if (!data || !Array.isArray(data.dias) || data.id !== base.id) {
+            if (data && data.id && data.id !== base.id) return; /* a nuvem já está em outra semana: não mexe */
+            tx.set(ref, JSON.parse(JSON.stringify(base)));
+            return;
+          }
+          for (const [d, slot, v] of muda) {
+            const dia = data.dias[d]; if (!dia) continue;
+            if (slot === "power") dia.power = v; else { dia.pace = dia.pace || {}; dia.pace[slot] = v; }
+          }
+          tx.set(ref, JSON.parse(JSON.stringify(data)));
+        });
       },
       async delLib(id) {
         const dRef = doc(db, "artifacts", projectId, "public", "data", "biblioteca", id);
@@ -961,6 +1005,17 @@ function savePlan(){
  save("semanas/v2-"+state.week.id,state.week);
  if(!state.currentId||state.week.id===state.currentId){state.currentId=state.week.id;save(P_PLAN,state.week)}
 }
+/* grava só os treinos que mudaram (ex.: [[2,"power"]] ou [[4,"a"]]), sem sobrescrever o resto da semana */
+function savePlanSlots(slots){
+ const val=(d,s)=>{const dia=state.week.dias[d];return s==="power"?dia.power:(dia.pace?dia.pace[s]:null)};
+ const muda=slots.map(([d,s])=>[d,s,val(d,s)??null]);
+ const atual=!state.currentId||state.week.id===state.currentId;
+ if(!window.fb||!window.fb.ready||state.readOnly)return savePlan(); /* sem nuvem: guarda no aparelho como antes */
+ lsSet("semanas/v2-"+state.week.id,state.week);
+ const paths=["semanas/v2-"+state.week.id];
+ if(atual){state.currentId=state.week.id;lsSet(P_PLAN,state.week);paths.push(P_PLAN)}
+ Promise.all(paths.map(p=>window.fb.patchPlan(p,muda,state.week))).then(syncOk).catch(fbFail);
+}
 
 /* status da sincronização */
 const FB_MSG={
@@ -970,7 +1025,7 @@ const FB_MSG={
  "auth/network-request-failed":"Sem internet no momento. Os dados ficam no aparelho e sincronizam quando a conexão voltar.",
  "auth/api-key-not-valid":"A chave do Firebase no código não é válida para este domínio. Confira a apiKey e as restrições de domínio no Google Cloud.",
  "auth/requests-from-referer-are-blocked":"O domínio da Vercel não está liberado na chave do Firebase. Libere o domínio nas restrições da chave no Google Cloud.",
- "permission-denied":"As regras do Firestore estão bloqueando. Cole as regras do guia em Firestore > Regras e publique.",
+ "permission-denied":"Sem permissão para acessar os dados. Entre com a sua conta Google (Mais > Conta). Se já entrou, esta conta não está liberada nas regras do Firebase.",
  "not-found":"O banco Firestore ainda não foi criado. Crie em Firestore Database > Criar banco de dados.",
  "failed-precondition":"O banco Firestore ainda não foi criado ou não está pronto. Crie em Firestore Database > Criar banco de dados.",
  "unavailable":"O Firebase não respondeu. Os dados ficam no aparelho e sincronizam depois.",
@@ -981,7 +1036,7 @@ function syncOk(){setSync("ok","Online","Os dados estão salvos na nuvem e apare
 function fbFail(e){
  const code=(e&&e.code)||"";const msg=FB_MSG[code]||("Erro ao salvar na nuvem"+(code?` (${code})`:"")+". Os dados ficaram só neste aparelho.");
  console.error("Firebase:",code,(e&&e.message)||e);
- if(code==="permission-denied")state.readOnly=true;
+ if(code==="permission-denied"){state.readOnly=true;const u=window.fb&&window.fb.user&&window.fb.user();if(!u||u.anonimo){state.sheet="conta";renderSheet()}}
  setSync("err","Offline",msg);banner(msg);
 }
 window.onFbError=fbFail;
@@ -1025,12 +1080,26 @@ function renderSheet(){
  const item=(tab,tit,sub)=>`<button class="sheet-item" data-tab="${tab}" aria-current="${state.tab===tab?"page":"false"}"><b>${tit}</b><span>${sub}</span></button>`;
  const corpo=s==="eu"
   ?`<h3>Quem está usando este celular?</h3><p class="sub">O app mostra primeiro o seu treino, a sua dieta e os seus resultados. Dá para ver os do outro a qualquer momento.</p>
-    <div class="sheet-quem"><button class="po" data-eu="power" aria-pressed="${state.eu==="power"}"><i></i>${esc(NP())}</button><button class="pa" data-eu="pace" aria-pressed="${state.eu==="pace"}"><i></i>${esc(NA())}</button><button data-eu="ambos" aria-pressed="${state.eu==="ambos"}">Os dois</button></div>`
+    <div class="sheet-quem"><button class="po" data-eu="power" aria-pressed="${state.eu==="power"}"><i></i>${esc(NP())}</button><button class="pa" data-eu="pace" aria-pressed="${state.eu==="pace"}"><i></i>${esc(NA())}</button><button data-eu="ambos" aria-pressed="${state.eu==="ambos"}">Os dois</button></div>
+    ${state.eu?`<button class="sheet-item" data-sheet="conta" style="margin-top:8px"><b>Conta</b><span>Entrar com Google ou sair</span></button>`:""}`
   :`<h3>Mais</h3>
     ${item("resultados","Resultados","Histórico das semanas e análise do treinador")}
     ${item("biblioteca","Biblioteca","Treinos do treinador para usar na semana")}
     ${item("nova","Nova semana","Montar a próxima semana com a IA")}
-    <button class="sheet-item" data-sheet="eu"><b>Quem está usando</b><span>${esc(state.eu==="power"?NP():state.eu==="pace"?NA():state.eu==="ambos"?"Os dois":"Não escolhido")} · trocar</span></button>`;
+    <button class="sheet-item" data-sheet="eu"><b>Quem está usando</b><span>${esc(state.eu==="power"?NP():state.eu==="pace"?NA():state.eu==="ambos"?"Os dois":"Não escolhido")} · trocar</span></button>
+    <button class="sheet-item" data-sheet="conta"><b>Conta</b><span>${(()=>{const u=window.fb&&window.fb.user&&window.fb.user();return u&&!u.anonimo?esc(u.email||u.nome):"Entrar com Google para proteger os dados"})()}</span></button>`;
+ if(s==="conta"){
+  const u=window.fb&&window.fb.user&&window.fb.user(),google=u&&!u.anonimo;
+  el.innerHTML=`<div class="sheet-fundo" data-fechar-sheet></div><div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-alca" aria-hidden="true"></div>
+   <h3>Conta</h3>
+   ${google?`<p class="sub">Conectado como <b>${esc(u.email||u.nome)}</b>. Os dados ficam protegidos e só as contas liberadas nas regras do Firebase acessam.</p>
+     <button class="btn ghost sheet-fechar" data-sair>Sair desta conta</button>`
+    :`<p class="sub">Entre com a sua conta Google. Assim só vocês dois conseguem ver e alterar os treinos, a dieta e os resultados.</p>
+     <button class="btn sheet-fechar" data-login>Entrar com Google</button>`}
+   ${state.loginErr?`<p class="sub" style="color:var(--z5);margin-top:10px">${esc(state.loginErr)}</p>`:""}
+   <button class="btn ghost sheet-fechar" data-fechar-sheet>Fechar</button></div>`;
+  return;
+ }
  el.innerHTML=`<div class="sheet-fundo" data-fechar-sheet></div><div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-alca" aria-hidden="true"></div>${corpo}${state.eu||s!=="eu"?`<button class="btn ghost sheet-fechar" data-fechar-sheet>Fechar</button>`:""}</div>`;
 }
 document.addEventListener("click",e=>{
@@ -1040,6 +1109,10 @@ document.addEventListener("click",e=>{
  const sh=t.closest("[data-sheet]");if(sh){state.sheet=sh.dataset.sheet;renderSheet();return}
  if(t.closest("[data-fechar-sheet]")){state.sheet=null;renderSheet();return}
  const eu=t.closest("[data-eu]");if(eu){setEu(eu.dataset.eu);return}
+ /* entrar com Google / sair: recarrega o app para reconectar tudo com a conta nova */
+ if(t.closest("[data-login]")){state.loginErr="";if(!window.fb||!window.fb.entrarGoogle){state.loginErr="Sem conexão com a nuvem agora. Tente de novo em instantes.";renderSheet();return}
+  window.fb.entrarGoogle().then(r=>{if(r!=="redirect")location.reload()}).catch(err=>{const c=(err&&err.code)||"";state.loginErr=/popup-closed/.test(c)?"Login cancelado.":/unauthorized-domain/.test(c)?"Este endereço do app ainda não está autorizado no Firebase (Authentication > Settings > Authorized domains).":/operation-not-allowed/.test(c)?"O login com Google ainda não foi ativado no Firebase (Authentication > Sign-in method).":"Não foi possível entrar agora"+(c?` (${c})`:"")+".";renderSheet()});return}
+ if(t.closest("[data-sair]")){window.fb.sair().then(()=>location.reload());return}
  const nav=t.closest("#botnav [data-tab], #sheet [data-tab]");
  if(nav){state.tab=nav.dataset.tab;state.sheet=null;state.delConfirm=null;state.editing=null;render();scrollTo(0,0)}
 });
@@ -1660,7 +1733,7 @@ Responda APENAS JSON: {"resumo":"2 frases com a avaliação geral","fortes":["at
   W.analise={...(W.analise||{}),[who]:an};
   lsSet("analises/v2-"+id,W.analise);
   if(window.fb&&window.fb.ready&&!state.readOnly)window.fb.merge("analises/v2-"+id,{[who]:an}).then(syncOk).catch(fbFail);
- }catch(e){rh.iaErr={k:id+who,t:({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta da IA veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar a análise agora. Tente de novo."}}
+ }catch(e){rh.iaErr={k:id+who,t:({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,login:IA_LOGIN,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta da IA veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar a análise agora. Tente de novo."}}
  finally{rh.iaLoading=null;if(state.tab==="resultados")render()}
 }
 function vRes(v){
@@ -1866,7 +1939,8 @@ async function shrinkImage(blob,maxPx=2400000){
 }
 const IA_CHEIA="A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos.";
 const IA_CORTADA="A resposta da IA ficou longa demais e veio cortada. Tente refazer só um atleta por vez.";
-const IA_ORIGEM="O servidor da IA recusou o pedido. Recarregue o app e tente de novo.";
+const IA_ORIGEM="O servidor da IA recusou o pedido: esta conta não está liberada para usar a IA, ou o app precisa ser recarregado.";
+const IA_LOGIN="Para usar a IA, entre com a sua conta Google em Mais > Conta.";
 /* thinking: nível de raciocínio do Gemini. Importar arquivos é só transcrever, então usa "LOW" (bem mais rápido);
    montar treinos precisa pensar (conta do KPI), então fica no padrão do modelo */
 async function geminiJson(prompt,images,signal,thinking){
@@ -1888,12 +1962,15 @@ async function geminiJson(prompt,images,signal,thinking){
  /* sem chave no aparelho, usa a chave guardada com segurança na Vercel (/api/gemini) */
  const url=apiKey?"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent":"/api/gemini";
  const headers={"Content-Type":"application/json"};if(apiKey)headers["x-goog-api-key"]=apiKey; /* chave no cabeçalho, não na URL */
+ /* sem chave própria: manda o comprovante de login, o servidor da IA só atende quem é do app */
+ else if(window.fb&&window.fb.token){try{const tk=await window.fb.token();if(tk)headers.Authorization="Bearer "+tk}catch(e){}}
  const res=await fetch(url,{method:"POST",headers,body:payload,signal});
  if(!res.ok){
   const errTxt=await res.text().catch(()=>"");
   /* só tenta de novo sem o nível de raciocínio se o erro for mesmo por causa dele */
   if(res.status===400&&thinking&&/thinking/i.test(errTxt))return geminiJson(prompt,images,signal,null);
   if(apiKey&&(res.status===400||res.status===403)) throw {code:"bad_key"};
+  if(res.status===401) throw {code:"login"};
   if(res.status===403) throw {code:"origem"};
   if(res.status===429) throw {code:"rate_limited"};
   if(res.status>=500) throw {code:"overloaded"};
@@ -1948,10 +2025,15 @@ function faseBloco(n){
 }
 const quem=w=>w==="power"?NP():NA();
 const doDa=w=>w==="power"?`do ${NP()}`:`da ${NA()}`;
+/* resumo de uma sessão para a IA: título, tipo, tempo, esforço e os exercícios (sem descrições longas).
+   Deixa o pedido bem menor (mais rápido e barato) e ainda dá para a IA variar e progredir */
+const resumoSessao=s=>s?{titulo:s.titulo,tipo:s.tipo,min:+s.min||0,rpe:+s.rpe||0,...(+s.km?{km:+s.km}:{}),exercicios:(s.blocos||[]).map(b=>`${b.nome}: `+(b.itens||[]).map(i=>typeof i==="string"?i:(i&&i.t)||"").filter(Boolean).join("; "))}:null;
+const resumoCorrida=r=>r?{titulo:r.titulo,km:+r.km||0,min:+r.min||0,passos:r.passos||[]}:null;
+const resumoSemana=w=>({id:w.id,nome:w.nome,fase:w.fase,foco:w.foco,dias:w.dias.map((d,i)=>({dia:DIAS[i],power:resumoSessao(d.power),pace:{corrida:resumoCorrida(d.pace.corrida),a:resumoSessao(d.pace.a),b:resumoSessao(d.pace.b)}}))});
 function contextoParte(who){
  return state.week.dias.map((d,i)=>who==="power"
-  ?{dia:DIAS[i],power:d.power,treino_do_pace:d.pace.corrida?`corrida: ${d.pace.corrida.titulo}`:d.pace.a.titulo}
-  :{dia:DIAS[i],corrida_fixa:d.pace.corrida,a:d.pace.a,b:d.pace.b,treino_do_power:`${d.power.titulo} (esforço ${d.power.rpe})`});
+  ?{dia:DIAS[i],power:resumoSessao(d.power),treino_do_pace:d.pace.corrida?`corrida: ${d.pace.corrida.titulo}`:d.pace.a.titulo}
+  :{dia:DIAS[i],corrida_fixa:resumoCorrida(d.pace.corrida),a:resumoSessao(d.pace.a),b:resumoSessao(d.pace.b),treino_do_power:`${d.power.titulo} (esforço ${d.power.rpe})`});
 }
 function promptBase(who){
  return `Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Use os marcadores {power} e {pace} quando citar os atletas, nunca nomes. ${PERFIL[who]}
@@ -1961,7 +2043,7 @@ ${who==="pace"?faseBloco(numSemana(state.week)):""}
 ${KPI_SPEC}
 ${desempenhoIA(who)}
 Biblioteca de treinos do treinador (prefira adaptar estes treinos):
-${libForPrompt()}`;
+${libForPrompt(who)}`;
 }
 /* desempenho registrado (esforço, prontidão e cargas) para a IA progredir as cargas com base no realizado */
 function desempenhoIA(who){
@@ -2025,7 +2107,7 @@ Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no fo
   {const pv=document.getElementById("prev");if(pv)pv.innerHTML=partPrevHTML(state.partDraft)}
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return}
-  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
+  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,login:IA_LOGIN,formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
  }finally{btn.disabled=false;stop.hidden=true;ctl=null}
 }
 function partPrevHTML(p){
@@ -2039,7 +2121,8 @@ function usarParte(){
  const p=state.partDraft;if(!p)return;
  if(p.weekId!==state.week.id){state.partDraft=null;return}
  p.dias.forEach((x,i)=>{const d=state.week.dias[i];if(p.who==="power")d.power=x.power;else{d.pace.a=x.a;d.pace.b=x.b}});
- state.partDraft=null;savePlan();state.tab="dia";render();scrollTo(0,0);
+ const slotsP=p.who==="power"?p.dias.map((_,i)=>[i,"power"]):p.dias.flatMap((_,i)=>[[i,"a"],[i,"b"]]);
+ state.partDraft=null;savePlanSlots(slotsP);state.tab="dia";render();scrollTo(0,0);
 }
 
 /* Refazer com IA: um treino, um dia, um atleta */
@@ -2069,17 +2152,17 @@ Treino atual: ${JSON.stringify(atual)}
 Pedido do atleta: ${r.pedido||"variar mantendo o mesmo objetivo"}
 
 Responda APENAS com JSON: {"sessao":Sessao}. ${SESSAO_SPEC}. Português do Brasil; cite zonas como Z1, Z2 etc.`;
- r.loading=true;r.err="";render();
+ r.loading=true;r.err="";r.ctl=new AbortController();render();
  const f=faixa(who,r.d,day);
  const checar=out=>{if(!out||!okS(out.sessao))throw {code:"formato"};return foraDaFaixa([{s:out.sessao,who,d:r.d,day,rot:DIAS[r.d]}])};
- try{const {out,fora}=await iaComKPI(prompt+(f?`\nFaixa de tempo real desta sessão: ${f[0]} a ${f[1]} min.`:""),null,checar);r.draft=fixMin(out.sessao);r.err=fora.length?`Mesmo depois do ajuste, o tempo real ficou fora da faixa (${fora[0]}). Você pode usar assim ou tentar de novo.`:""}
- catch(e){r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
+ try{const {out,fora}=await iaComKPI(prompt+(f?`\nFaixa de tempo real desta sessão: ${f[0]} a ${f[1]} min.`:""),r.ctl.signal,checar);r.draft=fixMin(out.sessao);r.err=fora.length?`Mesmo depois do ajuste, o tempo real ficou fora da faixa (${fora[0]}). Você pode usar assim ou tentar de novo.`:""}
+ catch(e){if(e&&e.name==="AbortError")return;r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,login:IA_LOGIN,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
  finally{r.loading=false;if(state.redo===r)render()}
 }
 function redoUse(){
  const r=state.redo;if(!r||!r.draft)return;const day=state.week.dias[r.d];
  if(r.slot==="power")day.power=r.draft;else day.pace[r.slot]=r.draft;
- state.redo=null;savePlan();render();
+ const rs=[r.d,r.slot];state.redo=null;savePlanSlots([rs]);render();
 }
 
 let ctl=null;
@@ -2106,8 +2189,8 @@ ${KPI_SPEC}
 Corridas da planilha para a próxima semana:
 ${runs.length?runs.join("\n"):"Nenhuma informada: use corrida = null em todos os dias."}
 
-Semana atual (JSON, mesmo formato que você deve devolver):
-${JSON.stringify(state.week)}
+Semana atual (resumo: título, tempo, esforço e exercícios de cada sessão; use para variar os exercícios e progredir. O formato da resposta está descrito no fim):
+${JSON.stringify(resumoSemana(state.week))}
 
 Registro da semana atual: ${resumo()}
 ${desempenhoIA("power")}
@@ -2136,7 +2219,7 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
    no_key:"Cole sua chave gratuita do Google AI Studio acima (ou em Painel > Ajustes) para gerar treinos automaticamente.",
    bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
    rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
-   overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,
+   overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,login:IA_LOGIN,
    formato:"A resposta veio num formato inesperado. Tente gerar de novo."
   };
   st.textContent=m[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
@@ -2251,7 +2334,7 @@ const ERR=e=>({
  no_key:"Para ler PDFs ou imagens com IA, salve sua chave gratuita do Google AI Studio em Painel > Ajustes. (Planilhas CSV do Garmin funcionam sem chave!)",
  bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
  rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
- overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,
+ overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,login:IA_LOGIN,
  formato:"A resposta da IA veio num formato inesperado. Tente de novo.",
  script:"Não foi possível abrir este tipo de arquivo agora. Tente em CSV, TXT ou PDF.",
  vazio:"Não encontrei nada para importar neste arquivo.",
@@ -2398,13 +2481,14 @@ async function importLib(input,nome){
   render();say(id,`${total} treino${total>1?"s":""} adicionado${total>1?"s":""} à biblioteca.`);
  }catch(e){say(id,ERR(e))}finally{state.libBusy=false}
 }
-function libForPrompt(){if(!state.lib.length)return "vazia";let out="";for(const t of state.lib){const line=`- ${t.titulo} [${t.categoria}, ${t.para}]: `+(t.blocos||[]).map(b=>b.nome+": "+(b.itens||[]).map(i=>typeof i==="string"?i:i.t).join("; ")).join(" | ")+"\n";if(out.length+line.length>14000)break;out+=line}return out}
+/* biblioteca para a IA; com "who", só os treinos daquele atleta (ou dos dois): pedido menor */
+function libForPrompt(who){const lib=who?state.lib.filter(t=>!t.para||t.para===who||t.para==="ambos"):state.lib;if(!lib.length)return "vazia";let out="";for(const t of lib){const line=`- ${t.titulo} [${t.categoria}, ${t.para}]: `+(t.blocos||[]).map(b=>b.nome+": "+(b.itens||[]).map(i=>typeof i==="string"?i:i.t).join("; ")).join(" | ")+"\n";if(out.length+line.length>14000)break;out+=line}return out}
 function aplicar(id,d,slot){
  const t=state.lib.find(x=>x.id===id);if(!t)return;
  const s={titulo:t.titulo,desc:t.desc||"",tipo:t.tipo||t.categoria||"Treino",min:+t.min||0,rpe:+t.rpe||0,km:+t.km||0,zonas:(t.zonas||[0,0,0,0,0]).slice(0,5),blocos:t.blocos||[],nota:""};
  const day=state.week.dias[d];if(slot==="power")day.power=s;else day.pace[slot]=s;
  if(slot!=="power"){state.log.opt[d]=slot;saveLog({opt:{[d]:slot}})}
- savePlan();state.dia=d;state.tab="dia";render();scrollTo(0,0);
+ savePlanSlots([[d,slot]]);state.dia=d;state.tab="dia";render();scrollTo(0,0);
 }
 async function delLib(id){
  if(state.delConfirm!==id){state.delConfirm=id;render();return;}
@@ -2448,11 +2532,11 @@ view.addEventListener("click",e=>{
  if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
  if(t.dataset.genWho!==undefined){const a=document.getElementById("ajustes");if(a)state.ajustesTxt=a.value;state.genWho=t.dataset.genWho;render();return}
  const act=t.dataset.act;
- if(act==="redo-card"){state.editing=null;state.redo={d:+t.dataset.d,slot:t.dataset.slot,pedido:"",draft:null,loading:false,err:""};render();return}
+ if(act==="redo-card"){if(state.redo&&state.redo.ctl)state.redo.ctl.abort();state.editing=null;state.redo={d:+t.dataset.d,slot:t.dataset.slot,pedido:"",draft:null,loading:false,err:""};render();return}
  if(act==="redo-go")return redoGo();
  if(act==="redo-use")return redoUse();
  if(act==="redo-retry"){if(state.redo){state.redo.draft=null;render()}return}
- if(act==="redo-cancel"){state.redo=null;render();return}
+ if(act==="redo-cancel"){if(state.redo&&state.redo.ctl)state.redo.ctl.abort();state.redo=null;render();return}
  if(act==="usar-parte")return usarParte();
  if(act==="desc-parte"){state.partDraft=null;render();return}
  if(act==="diet-st"){
@@ -2515,7 +2599,7 @@ view.addEventListener("click",e=>{
     if(cur.itens.length)bls.push(cur);
     target.blocos=bls;
    }
-   savePlan();
+   savePlanSlots([[d,slot]]);
   }
   state.editing=null;render();return;
  }
@@ -2553,8 +2637,11 @@ view.addEventListener("change",e=>{
  if(c==="na")state.cfg.nomes.pace=val||"Joanna";
  if(c==="prova")state.cfg.prova=val;
  if(c==="peso-power"||c==="peso-pace"){const kg=parseFloat(val.replace(",","."));state.cfg.pesos={...(state.cfg.pesos||{}),[c.slice(5)]:kg>=30&&kg<=200?kg:0}}
- if(c==="apikey"){state.cfg.geminiKey=val;if(val)localStorage.setItem("gemini_api_key",val);else localStorage.removeItem("gemini_api_key");}
- save(P_CFG,state.cfg);render();
+ if(c==="apikey"){state.cfg.geminiKey=val;if(val)localStorage.setItem("gemini_api_key",val);else localStorage.removeItem("gemini_api_key");lsSet(P_CFG,state.cfg);return}
+ /* grava só o campo que mudou: se os dois mexem nos ajustes ao mesmo tempo, um não apaga o do outro */
+ const part=c==="pace"?{paces:state.cfg.paces}:c==="np"?{nomes:{power:state.cfg.nomes.power}}:c==="na"?{nomes:{pace:state.cfg.nomes.pace}}
+  :c==="prova"?{prova:state.cfg.prova}:{pesos:{[c.slice(5)]:state.cfg.pesos[c.slice(5)]}};
+ mergeNow(P_CFG,part,state.cfg);renderRemoto();
 });
 document.getElementById("wk").addEventListener("change",e=>{if(e.target.id==="wk-switch")switchWeek(e.target.value)});
 
@@ -2645,6 +2732,8 @@ async function initCloud(){
  state.eu=lsGet("eu");aplicarEu();if(!state.eu)state.sheet="eu";
  state.dia=Math.max(0,todayIdx());render();
  initCloud();
+  /* app instalável e abre sem internet (só em https, como na Vercel) */
+ if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("/sw.js").catch(()=>{});
  fetch("/api/gemini").then(r=>r.ok?r.json():null).then(j=>{if(j&&j.ok){state.aiServer=true;render()}}).catch(()=>{});
 })();
 </script>
