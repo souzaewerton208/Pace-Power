@@ -1069,7 +1069,9 @@ function aplicarEu(){
  const v=state.eu;state.verDia=v||"ambos";
  if(v==="power"||v==="pace"){state.dietWho=v;if(state.rh)state.rh.who=v}
 }
-function setEu(v){state.eu=v;lsSet("eu",v);aplicarEu();state.sheet=null;render();scrollTo(0,0)}
+function setEu(v){state.eu=v;lsSet("eu",v);aplicarEu();
+ /* logo depois de escolher, pede o login Google se ainda não entrou */
+ const u=window.fb&&window.fb.user&&window.fb.user();state.sheet=u&&u.anonimo?"conta":null;render();scrollTo(0,0)}
 /* pessoa padrão para importar resultados: quem usa o celular (a conferência deixa trocar) */
 const euOuPace=()=>state.eu==="power"?"power":"pace";
 /* painel que sobe de baixo: "Mais" (abas que não cabem na barra) e "Quem está usando" */
@@ -1097,7 +1099,7 @@ function renderSheet(){
     :`<p class="sub">Entre com a sua conta Google. Assim só vocês dois conseguem ver e alterar os treinos, a dieta e os resultados.</p>
      <button class="btn sheet-fechar" data-login>Entrar com Google</button>`}
    ${state.loginErr?`<p class="sub" style="color:var(--z5);margin-top:10px">${esc(state.loginErr)}</p>`:""}
-   <button class="btn ghost sheet-fechar" data-fechar-sheet>Fechar</button></div>`;
+   <button class="btn ghost sheet-fechar" data-fechar-sheet>${google?"Fechar":"Agora não"}</button></div>`;
   return;
  }
  el.innerHTML=`<div class="sheet-fundo" data-fechar-sheet></div><div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-alca" aria-hidden="true"></div>${corpo}${state.eu||s!=="eu"?`<button class="btn ghost sheet-fechar" data-fechar-sheet>Fechar</button>`:""}</div>`;
@@ -2687,6 +2689,8 @@ async function initCloud(){
  try{await window.fb.get(P_CFG);await window.fb.merge("status/ping",{t:Date.now()})}
  catch(e){fbFail(e);return}
  state.connected=true;syncOk();
+ /* ainda sem conta Google neste aparelho: abre a tela de login (depois de escolher quem está usando) */
+ {const u=window.fb.user();if(u&&u.anonimo&&state.eu&&!state.sheet){state.sheet="conta";renderSheet()}}
  /* primeiro manda o que foi marcado enquanto o app ainda não estava conectado; senão a nuvem apagaria */
  await enviarPendentes();
 
