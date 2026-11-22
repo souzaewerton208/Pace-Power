@@ -815,6 +815,13 @@ function save(p,d){
   catch(e){fbFail(e)}
  },450);
 }
+/* grava na hora (sem esperar) e diz se chegou na nuvem: true = salvo nos dois aparelhos */
+function saveNow(p,d){
+ lsSet(p,d);
+ if(!window.fb||!window.fb.ready||state.readOnly) return Promise.resolve(false);
+ clearTimeout(tm[p]);
+ return window.fb.set(p,cloudCopy(p,d)).then(()=>{syncOk();return true}).catch(e=>{fbFail(e);return false});
+}
 /* grava só o pedaço que mudou no registro da semana, sem apagar o que o outro marcou */
 function saveLog(part){
  lsSet(pLog(),state.log);
@@ -899,6 +906,7 @@ function render(){
  else r.innerHTML=`<span class="n">2027</span>Hyrox Fortaleza`;
  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===state.tab));
  ({dia:vDia,semana:vSemana,painel:vPainel,resultados:vRes,nutricao:vNutri,biblioteca:vBib,nova:vNova})[state.tab](document.getElementById("view"));
+ Object.entries(state.msgs||{}).forEach(([id,t])=>{const e=document.getElementById(id);if(e&&t)e.textContent=t});
  if(obsFocus){const ta=document.getElementById("diet-obs-input");if(ta&&ta.dataset.k===obsFocus.k){ta.focus();try{ta.setSelectionRange(obsFocus.s,obsFocus.e)}catch(e){}}}
 }
 
@@ -1144,7 +1152,7 @@ function runCard(r,d){
   ${isEd?editFormHTML(r,d,"corrida",true):`<h3>${esc(r.titulo)}</h3>${descP(r)}
   <div class="stats"><span><b>${num(r.km)}</b> km</span><span>~<b>${+r.min||0}</b> min</span>${r.obs?`<span>${esc(r.obs)}</span>`:""}</div>
   <ol class="steps">${(r.passos||[]).map(p=>`<li><span>${rich(p,true)}</span></li>`).join("")}</ol>
-  ${acts("pace",d).some(a=>a.run)?realHTML(acts("pace",d).filter(a=>a.run),+r.km):`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="pace">Importar resultado do Garmin</button></p>`}`}</div>
+  ${acts("pace",d).some(a=>a.run)?realHTML(acts("pace",d).filter(a=>a.run),+r.km):`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="pace">Importar resultado do Garmin</button></p>`}<div class="upl" id="upl-res"></div>`}</div>
   <div class="checks"><div class="chk">${ck(d+":pace:corrida","Corrida feita")}${posTreinoHTML("pace",d,r,"corrida")}</div></div></article>`;
 }
 function optCard(p,d){
@@ -2020,7 +2028,8 @@ const ERR=e=>({
 }[e&&e.code]||"Não foi possível ler o arquivo. Confira o formato e tente de novo.");
 
 function pick(kind,accept,who,multi){const f=document.getElementById("fileIn");f.value="";f.accept=accept;f.multiple=!!multi;f.dataset.kind=kind;f.dataset.who=who||"";f.click()}
-const say=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t};
+/* a mensagem fica guardada para sobreviver quando a tela é redesenhada (ex.: sincronização com o outro aparelho) */
+const say=(id,t)=>{state.msgs=state.msgs||{};state.msgs[id]=t;const e=document.getElementById(id);if(e)e.textContent=t};
 
 /* Importar resultados */
 async function importRes(file,who){
@@ -2042,7 +2051,7 @@ async function importRes(file,who){
    list=(r&&r.atividades||[]).map(a=>({...a,data:isoDate(a.data),km:+a.km||0,run:a.run===true||RUN.test((a.tipo||"")+" "+(a.titulo||""))})).filter(a=>a.data);fonte=fonte||(r&&r.fonte)||"";}
   if(!list.length)throw {code:"vazio"};
   const byWeek={};list.forEach(a=>{a.fonte=fonte||"importado";(byWeek[mondayOf(a.data)]=byWeek[mondayOf(a.data)]||[]).push(a)});
-  let nCur=0;
+  let nCur=0;const saves=[];
   for(const [wk,arr] of Object.entries(byWeek)){
    const path="resultados/v2-"+wk;const cur=wk===state.week.id?state.res:((await load(path))||{pace:{},power:{}});
    cur[who]=cur[who]||{};
@@ -2051,11 +2060,14 @@ async function importRes(file,who){
     if(wk===state.week.id){nCur++;const day=state.week.dias[d];
      if(who==="pace"){if(a.run&&day.pace.corrida)state.log.chk[d+":pace:corrida"]=true;else state.log.chk[d+":pace:treino"]=true}
      else state.log.chk[d+":power:treino"]=true}});
-   if(wk===state.week.id)state.res=cur;save(path,cur);
+   if(wk===state.week.id)state.res=cur;saves.push(saveNow(path,cur));
   }
-  saveLog({chk:state.log.chk});
+  saves.push(saveLog({chk:state.log.chk}));
   state.rh.loaded=false;/* a aba Resultados recarrega o histórico com o que acabou de entrar */
-  render();say(id,`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`);
+  const resumo=`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`;
+  render();say(id,resumo+" Salvando…");
+  const oks=await Promise.all(saves);
+  say(id,resumo+(oks.every(Boolean)?" Salvo ✓":" Salvo só neste aparelho: sem conexão com a nuvem."));
  }catch(e){say(id,ERR(e))}
 }
 
