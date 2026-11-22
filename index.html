@@ -153,7 +153,7 @@ nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink)}
 .ind span b{color:var(--ink)} .ind .g{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))} .ind .g b{color:var(--ok)}
 .ind .m b{color:var(--warn)} .ind .w{border-color:color-mix(in srgb,#C0392B 40%,var(--line))} .ind .w b{color:#C0392B}
 .forca{margin:0 0 14px} .forca h4{margin:0 0 4px;font-size:.86rem}
-.aval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.aval-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
 .aval{border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;background:var(--surface);min-width:0}
 .aval.pace{border-top:3px solid var(--pace)} .aval.power{border-top:3px solid var(--power)}
 .rsec .aval{border:0;padding:0;margin-bottom:14px}
@@ -229,7 +229,7 @@ table.week tbody tr:hover td{background:var(--surface-2)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 
 /* Painel */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:16px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px}
 .panel h3{font-stretch:72%;font-weight:850;font-size:1.5rem;margin:0;line-height:1.1}
 .panel .sub{color:var(--muted);font-size:.86rem;margin:4px 0 12px}
@@ -302,7 +302,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .dw-card .st-lbl{font-weight:700;margin-top:2px}
 .dw-card .st-note{color:var(--muted);margin-top:3px;line-height:1.35;word-break:break-word}
 
-.meals{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.meals{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
 .meal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px}
 .meal .h{display:flex;align-items:baseline;gap:10px}
 .meal .time{font-stretch:68%;font-weight:900;font-size:1.7rem;line-height:1;color:var(--pace)}
@@ -349,7 +349,7 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
 .filters button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 13px;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer}
 .filters button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
-.lib{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start}
+.lib{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px;align-items:start}
 .lib .card details{border-top:1px solid var(--line-2);margin-top:10px;padding-top:4px}
 .lib .card summary{cursor:pointer;font-size:.88rem;font-weight:650;color:var(--muted);padding:6px 0}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
@@ -403,6 +403,20 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:12px}
 .trend b{color:var(--ink)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:no-preference){.dayname{animation:rise .32s cubic-bezier(.2,.8,.2,1)}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}}
+/* Celular: campos com 16px (o iPhone não dá zoom ao tocar), botões maiores para o dedo,
+   e a coluna da refeição fixa na tabela de adesão ao rolar para o lado */
+@media (max-width:640px){
+ input,select,textarea{font-size:16px!important}
+ .edit-btn{padding:8px 12px;font-size:.82rem}
+ .chk label{padding:8px 12px 8px 10px}
+ .agua-btns button{padding:9px 14px}
+ .rpe-b{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+ .rpe-b button{min-height:40px}
+ .pq-b button{min-width:38px;min-height:38px}
+ .diet-day-pills button{min-height:38px;min-width:40px}
+ .adh input{width:24px;height:24px}
+ .adh th:first-child,.adh td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+}
 </style>
 </head>
 <body>
@@ -473,8 +487,16 @@ window.dbReady = new Promise(async (resolve) => {
         await setDoc(refOf(path), JSON.parse(JSON.stringify(data)), { merge: true });
       },
       watch(path, cb) {
-        return onSnapshot(refOf(path), (snap) => {
-          if (snap.exists()) cb(snap.data());
+        /* espera a gravação deste aparelho ser confirmada pela nuvem (includeMetadataChanges avisa quando confirma,
+           então nada que o outro aparelho mudou no meio se perde) e só avisa o app quando o conteúdo mudou de fato:
+           evita redesenhar a tela à toa a cada toque */
+        let ultimo = null;
+        return onSnapshot(refOf(path), { includeMetadataChanges: true }, (snap) => {
+          if (snap.metadata.hasPendingWrites || !snap.exists()) return;
+          const d = snap.data(), s = JSON.stringify(d);
+          if (s === ultimo) return;
+          ultimo = s;
+          cb(d);
         }, (err) => {
           console.warn("Firestore watch:", err);
           if (window.onFbError) window.onFbError(err);
@@ -782,6 +804,7 @@ const state={
  dietObsDraft:null,
  dietMsg:null,
  resDraft:null,
+ gen:{busy:false,msg:""},
  delConfirm:null,
  editing:null
 };
@@ -823,11 +846,27 @@ function saveNow(p,d){
  clearTimeout(tm[p]);
  return window.fb.set(p,cloudCopy(p,d)).then(()=>{syncOk();return true}).catch(e=>{fbFail(e);return false});
 }
+/* grava na hora só um pedaço do documento (merge); "full" é a cópia completa que fica no aparelho */
+function mergeNow(p,part,full){
+ lsSet(p,full);
+ if(state.readOnly) return Promise.resolve(false);
+ if(!window.fb||!window.fb.ready){marcarPendente(p,part);return Promise.resolve(false)}
+ return window.fb.merge(p,part).then(()=>{syncOk();return true}).catch(e=>{fbFail(e);return false});
+}
 /* grava só o pedaço que mudou no registro da semana, sem apagar o que o outro marcou */
 function saveLog(part){
  lsSet(pLog(),state.log);
- if(!window.fb||!window.fb.ready||state.readOnly) return Promise.resolve(false);
+ if(state.readOnly) return Promise.resolve(false);
+ if(!window.fb||!window.fb.ready){marcarPendente(pLog(),part);return Promise.resolve(false)}
  return window.fb.merge(pLog(),part).then(()=>{syncOk();return true}).catch(e=>{fbFail(e);return false});
+}
+/* marcações feitas antes de conectar (app abrindo ou sem internet) ficam numa fila e sobem ao conectar */
+const fundir=(a,b)=>{const o={...(a&&typeof a==="object"?a:{})};for(const [k,v] of Object.entries(b||{}))o[k]=v&&typeof v==="object"&&!Array.isArray(v)?fundir(o[k],v):v;return o};
+function marcarPendente(p,part){const q=lsGet("pendentes")||{};q[p]=fundir(q[p],part);lsSet("pendentes",q)}
+async function enviarPendentes(){
+ const q=lsGet("pendentes");if(!q)return;
+ for(const [p,part] of Object.entries(q)){try{await window.fb.merge(p,part);delete q[p]}catch(e){break}}
+ lsSet("pendentes",Object.keys(q).length?q:null);
 }
 /* mostra no diário da dieta se o registro foi salvo na nuvem ou só neste aparelho */
 function dietSaved(k,p){
@@ -872,7 +911,7 @@ const P_PLAN="plano/v2", P_CFG="config/v2", P_WEEKS="semanas_lista/v2", pLog=()=
 const getApiKey=()=>(state.cfg.geminiKey||localStorage.getItem("gemini_api_key")||"").trim();
 
 /* Utilitários */
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const NP=()=>state.cfg.nomes.power||"Ewerton", NA=()=>state.cfg.nomes.pace||"Joanna";
 /* artigos no feminino antes de {pace} (ao→à, o→a, do→da, no→na, pelo→pela), inclusive nos textos que vêm do Gemini */
 const artPace=t=>t.replace(/(^|[^\p{L}])([Aa])o \{pace\}/gu,(m,p,a)=>p+(a==="A"?"À":"à")+" {pace}").replace(/(^|[^\p{L}])(pel|[dDnN])?([oO]) \{pace\}/gu,(m,p,pre,o)=>p+(pre||"")+(o==="O"?"A":"a")+" {pace}");
@@ -1281,12 +1320,15 @@ function weekStats(plan,log,res){
 async function loadHist(){
  if(state.histLoading)return;state.histLoading=true;
  const list=(state.weeks&&state.weeks.length?state.weeks:[{id:state.week.id,nome:state.week.nome}]).slice(-12);
- const out={};
- for(const w of list){
-  if(w.id===state.week.id)continue;
-  try{out[w.id]={nome:w.nome,plan:await load("semanas/v2-"+w.id),log:await load("registro/v2-"+w.id),res:await load("resultados/v2-"+w.id)}}catch(e){}
- }
- state.hist=out;state.histLoading=false;if(state.tab==="painel"||state.tab==="dia")render();
+ const out={},online=state.connected;
+ /* todas as semanas ao mesmo tempo (antes eram 36 leituras uma depois da outra) */
+ await Promise.all(list.filter(w=>w.id!==state.week.id).map(async w=>{
+  try{const [plan,log,res]=await Promise.all([load("semanas/v2-"+w.id),load("registro/v2-"+w.id),load("resultados/v2-"+w.id)]);out[w.id]={nome:w.nome,plan,log,res}}catch(e){}
+ }));
+ state.histLoading=false;
+ /* começou antes de conectar e a nuvem chegou no meio: descarta, a próxima tela recarrega completo */
+ if(!online&&state.connected){state.hist=null;return}
+ state.hist=out;if(state.tab==="painel"||state.tab==="dia")renderRemoto();
 }
 const pct=x=>Math.round((x||0)*100)+"%";
 const bar=(x,color)=>`<div class="hb"><span><b style="width:${Math.min(100,Math.round((x||0)*100))}%;background:${color}"></b></span>${pct(x)}</div>`;
@@ -1314,6 +1356,8 @@ function histPanel(){
 }
 
 /* ===== Aba Resultados: histórico semanal dos resultados importados ===== */
+/* data no fuso do aparelho (toISOString usa UTC: depois das 21h no Brasil já virava o dia seguinte) */
+const isoLocal=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const addDias=(id,n)=>{const d=new Date(id+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
 const semLabel=id=>{const a=new Date(id+"T12:00:00"),b=new Date(addDias(id,6)+"T12:00:00"),nmw=(state.weeks.find(w=>w.id===id)||{}).nome;return `${fmt(a)} a ${fmt(b)}${nmw?` (${nmw})`:""}`};
 async function loadRH(){
@@ -1329,7 +1373,7 @@ async function loadRH(){
  weeks[state.week.id]={res:state.res};
  rh.weeks=weeks;rh.loading=false;rh.loaded=true;
  const ids=resIds();
- if(!rh.sel||!weeks[rh.sel]){const prev=addDias(mondayOf(new Date().toISOString().slice(0,10)),-7);rh.sel=ids.includes(prev)?prev:(ids[0]||state.week.id)}
+ if(!rh.sel||!weeks[rh.sel]){const prev=addDias(mondayOf(isoLocal(new Date())),-7);rh.sel=ids.includes(prev)?prev:(ids[0]||state.week.id)}
  await loadSemRH(rh.sel);
 }
 /* plano e marcações da semana escolhida, para comparar o planejado com o realizado */
@@ -1475,7 +1519,7 @@ Responda APENAS JSON: {"resumo":"2 frases com a avaliação geral","fortes":["at
   W.analise={...(W.analise||{}),[who]:an};
   lsSet("analises/v2-"+id,W.analise);
   if(window.fb&&window.fb.ready&&!state.readOnly)window.fb.merge("analises/v2-"+id,{[who]:an}).then(syncOk).catch(fbFail);
- }catch(e){rh.iaErr={k:id+who,t:({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta da IA veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar a análise agora. Tente de novo."}}
+ }catch(e){rh.iaErr={k:id+who,t:({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta da IA veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar a análise agora. Tente de novo."}}
  finally{rh.iaLoading=null;if(state.tab==="resultados")render()}
 }
 function vRes(v){
@@ -1562,7 +1606,7 @@ function vNutri(v){
   <button class="po" data-diet-who="power" aria-pressed="${isPo}"><i></i>${esc(NP())} · ${Number(DIET_EWERTON.kcal||2600).toLocaleString("pt-BR")} kcal</button>
  </div>
 
- <div class="upl" id="upl-dieta"></div><div id="prev-dieta"></div>
+ <div class="upl" id="upl-dieta"></div><div id="prev-dieta">${state.dietDraft&&state.dietDraft.who===who?dietPrevHTML(state.dietDraft):""}</div>
 
  <!-- Registro diário de adesão e observações sincronizado -->
  <section class="diet-log">
@@ -1645,8 +1689,8 @@ function vNova(v){
  </div>
  <p class="lbl">${ind?`O que mudar nos treinos ${esc(doDa(gw))}?`:"2. O que mudar ou focar nesta semana?"}</p>
  <textarea id="ajustes" rows="3" placeholder="${ind?"Ex.: não gostei do treino de quarta; quero mais glúteo e menos agachamento.":"Ex.: dor no joelho no búlgaro; mais SkiErg; sábado vamos viajar."}">${esc(state.ajustesTxt||"")}</textarea>
- <div class="actions"><button class="btn" id="gerar">${ind?`Refazer treinos ${esc(doDa(gw))}`:"Gerar próxima semana"}</button><button class="btn ghost" id="parar" hidden>Parar</button></div>
- <div class="status" id="gst"></div>
+ <div class="actions"><button class="btn" id="gerar" ${state.gen.busy?"disabled":""}>${ind?`Refazer treinos ${esc(doDa(gw))}`:"Gerar próxima semana"}</button><button class="btn ghost" id="parar" ${state.gen.busy?"":"hidden"}>Parar</button></div>
+ <div class="status" id="gst">${esc(state.gen.msg||"")}</div>
  <div id="prev">${ind?(state.partDraft&&state.partDraft.who===gw?partPrevHTML(state.partDraft):""):(state.draft?prevHTML(state.draft):"")}</div>
  <details style="margin-top:24px"><summary class="lbl" style="cursor:pointer">Ou colar semana pronta (JSON gerado no chat)</summary>
   <textarea class="paste" id="paste-week-json" placeholder="Cole aqui o JSON da semana para carregar direto sem usar chave IA."></textarea>
@@ -1679,6 +1723,8 @@ async function shrinkImage(blob,maxPx=2400000){
  }catch(e){return blob}
 }
 const IA_CHEIA="A IA do Google está sobrecarregada agora. Tente de novo em alguns minutos.";
+const IA_CORTADA="A resposta da IA ficou longa demais e veio cortada. Tente refazer só um atleta por vez.";
+const IA_ORIGEM="O servidor da IA recusou o pedido. Recarregue o app e tente de novo.";
 /* thinking: nível de raciocínio do Gemini. Importar arquivos é só transcrever, então usa "LOW" (bem mais rápido);
    montar treinos precisa pensar (conta do KPI), então fica no padrão do modelo */
 async function geminiJson(prompt,images,signal,thinking){
@@ -1692,29 +1738,37 @@ async function geminiJson(prompt,images,signal,thinking){
   const b64s=await Promise.all(imgs.map(blobToBase64));
   imgs.forEach((img,i)=>parts.push({inlineData:{mimeType:img.type||"image/jpeg",data:b64s[i]}}));
  }
- const gc={responseMimeType:"application/json"};
+ /* espaço de resposta grande: a semana inteira é um JSON longo e antes podia vir cortada */
+ const gc={responseMimeType:"application/json",maxOutputTokens:65536};
  if(thinking)gc.thinkingConfig={thinkingLevel:thinking};
  const payload=JSON.stringify({contents:[{parts}],generationConfig:gc});
  if(!apiKey&&payload.length>4300000) throw {code:"grande"};
  /* sem chave no aparelho, usa a chave guardada com segurança na Vercel (/api/gemini) */
- const url=apiKey?`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`:"/api/gemini";
- const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:payload,signal});
- /* se algum modelo de reserva não aceitar o nível de raciocínio, tenta de novo sem ele */
- if(res.status===400&&thinking)return geminiJson(prompt,images,signal,null);
+ const url=apiKey?"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent":"/api/gemini";
+ const headers={"Content-Type":"application/json"};if(apiKey)headers["x-goog-api-key"]=apiKey; /* chave no cabeçalho, não na URL */
+ const res=await fetch(url,{method:"POST",headers,body:payload,signal});
  if(!res.ok){
-  if(res.status===400||res.status===403) throw {code:"bad_key"};
+  const errTxt=await res.text().catch(()=>"");
+  /* só tenta de novo sem o nível de raciocínio se o erro for mesmo por causa dele */
+  if(res.status===400&&thinking&&/thinking/i.test(errTxt))return geminiJson(prompt,images,signal,null);
+  if(apiKey&&(res.status===400||res.status===403)) throw {code:"bad_key"};
+  if(res.status===403) throw {code:"origem"};
   if(res.status===429) throw {code:"rate_limited"};
   if(res.status>=500) throw {code:"overloaded"};
   throw {code:"api_err"};
  }
  const data=await res.json();
- const raw=data?.candidates?.[0]?.content?.parts?.[0]?.text||"";
+ const cand=data?.candidates?.[0];
+ /* junta todas as partes de texto da resposta (ignorando o "pensamento" do modelo) */
+ const raw=(cand?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join("");
  const clean=raw.replace(/^```json\s*/i,"").replace(/```\s*$/,"").trim();
- try{return JSON.parse(clean)}catch(e){throw {code:"formato"}}
+ try{return JSON.parse(clean)}catch(e){throw {code:cand?.finishReason==="MAX_TOKENS"?"cortada":"formato"}}
 }
 
 /* Geração de próxima semana */
-const okS=s=>s&&typeof s.titulo==="string"&&Array.isArray(s.blocos)&&Array.isArray(s.zonas)&&s.zonas.length===5;
+/* confere a sessão vinda da IA e corrige números que vieram como texto (ex.: "10 min" nas zonas) */
+const okS=s=>{if(!(s&&typeof s.titulo==="string"&&Array.isArray(s.blocos)&&Array.isArray(s.zonas)&&s.zonas.length===5&&s.blocos.every(b=>b&&typeof b==="object")))return false;
+ s.zonas=s.zonas.map(n=>parseFloat(n)||0);["min","rpe","km"].forEach(k=>{if(s[k]!==undefined)s[k]=parseFloat(s[k])||0});s.blocos.forEach(b=>{if(!Array.isArray(b.itens))b.itens=[]});return true};
 const okR=r=>r===null||r===undefined||(typeof r.titulo==="string"&&Array.isArray(r.passos)&&Array.isArray(r.zonas)&&r.zonas.length===5);
 /* valida a semana; semanas antigas (segunda a sábado) ganham o domingo regenerativo padrão */
 const valid=w=>{
@@ -1786,7 +1840,10 @@ function foraDaFaixa(lista){
 const fixMin=s=>{const k=kpiMin(s);if(k)s.min=k;return s};
 /* chama a IA; se alguma sessão ficar fora da faixa de tempo real, pede uma correção (uma vez só) */
 async function iaComKPI(prompt,signal,checar,avisar){
- let out=await geminiJson(prompt,null,signal),fora=checar(out);
+ /* se a resposta vier num formato inválido, tenta mais uma vez antes de mostrar erro */
+ let out,fora;
+ try{out=await geminiJson(prompt,null,signal);fora=checar(out)}
+ catch(e){if(!e||e.code!=="formato")throw e;out=await geminiJson(prompt,null,signal);fora=checar(out)}
  if(fora.length){
   if(avisar)avisar(fora.length);
   try{
@@ -1798,7 +1855,7 @@ async function iaComKPI(prompt,signal,checar,avisar){
 }
 const avisoFora=f=>f.length?` Atenção: ${f.length} ${f.length>1?"sessões ficaram":"sessão ficou"} fora da faixa de tempo (${f.join("; ")}). Dá para ajustar com "Refazer com IA" no dia.`:"";
 async function gerarParte(who){
- const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
+ const btn=GEN_BTN,stop=GEN_STOP,st=GEN_ST;
  const pedido=(document.getElementById("ajustes").value||"").trim();
  const forma=who==="power"?'{"power":Sessao}':'{"a":Sessao,"b":Sessao}';
  const prompt=`${promptBase(who)}
@@ -1823,10 +1880,10 @@ Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no fo
   r.dias.forEach(x=>[x.power,x.a,x.b].forEach(s=>s&&fixMin(s)));
   state.partDraft={who,dias:r.dias,weekId:state.week.id};
   st.textContent=`Pronto. Só os treinos ${doDa(who)} mudam. Confira e confirme.${avisoFora(fora)}`;
-  document.getElementById("prev").innerHTML=partPrevHTML(state.partDraft);
+  {const pv=document.getElementById("prev");if(pv)pv.innerHTML=partPrevHTML(state.partDraft)}
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return}
-  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",overloaded:IA_CHEIA,formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
+  st.textContent=({no_key:"A IA ainda não está ativa. Confira a chave do Gemini.",bad_key:"A chave do Gemini parece inválida.",rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
  }finally{btn.disabled=false;stop.hidden=true;ctl=null}
 }
 function partPrevHTML(p){
@@ -1874,7 +1931,7 @@ Responda APENAS com JSON: {"sessao":Sessao}. ${SESSAO_SPEC}. Português do Brasi
  const f=faixa(who,r.d,day);
  const checar=out=>{if(!out||!okS(out.sessao))throw {code:"formato"};return foraDaFaixa([{s:out.sessao,who,d:r.d,day,rot:DIAS[r.d]}])};
  try{const {out,fora}=await iaComKPI(prompt+(f?`\nFaixa de tempo real desta sessão: ${f[0]} a ${f[1]} min.`:""),null,checar);r.draft=fixMin(out.sessao);r.err=fora.length?`Mesmo depois do ajuste, o tempo real ficou fora da faixa (${fora[0]}). Você pode usar assim ou tentar de novo.`:""}
- catch(e){r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
+ catch(e){r.err=({no_key:"A IA ainda não está ativa.",bad_key:"A chave do Gemini parece inválida.",overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,rate_limited:"Muitas solicitações agora. Tente em alguns minutos.",formato:"A resposta veio num formato inesperado. Tente de novo."})[e&&e.code]||"Não foi possível gerar agora. Tente de novo."}
  finally{r.loading=false;if(state.redo===r)render()}
 }
 function redoUse(){
@@ -1884,9 +1941,15 @@ function redoUse(){
 }
 
 let ctl=null;
+/* estado da geração guardado em "state": sobrevive quando a tela é redesenhada no meio (1 a 2 min)
+   e impede pedir de novo enquanto a primeira ainda está rodando */
+const GEN_BTN={set disabled(v){state.gen.busy=v;const e=document.getElementById("gerar");if(e)e.disabled=v}};
+const GEN_STOP={set hidden(v){const e=document.getElementById("parar");if(e)e.hidden=v}};
+const GEN_ST={set textContent(t){state.gen.msg=t;const e=document.getElementById("gst");if(e)e.textContent=t}};
 async function gerar(){
+ if(state.gen.busy)return;
  if(state.genWho&&state.genWho!=="ambos")return gerarParte(state.genWho);
- const btn=document.getElementById("gerar"),stop=document.getElementById("parar"),st=document.getElementById("gst");
+ const btn=GEN_BTN,stop=GEN_STOP,st=GEN_ST;
  const n=(parseInt((state.week.nome||"").replace(/\D/g,""))||1)+1;
  const runs=[...document.querySelectorAll("[data-run]")].map((t,i)=>t.value.trim()?`${DIAS[i]}: ${t.value.trim()}`:null).filter(Boolean);
  const prompt=`Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Programe a semana de dois atletas, de segunda a domingo, com o domingo regenerativo. Use os marcadores {power} e {pace} quando precisar citar os atletas no texto, nunca nomes.
@@ -1924,14 +1987,14 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
   const {out:w,fora}=await iaComKPI(prompt,ctl.signal,checar,k=>{st.textContent=`Ajustando o tempo real de ${k} ${k>1?"sessões":"sessão"} (segunda passada)…`});
   w.id=nextId(state.week.id);w.nome=`Semana ${n}`;
   w.dias.forEach(d=>[d.power,d.pace.a,d.pace.b].forEach(fixMin));
-  state.draft=w;st.textContent="Pronto. Confira o resumo abaixo e confirme."+avisoFora(fora).replace(/\{power\}|\(power\)/g,`(${NP()})`).replace(/\(pace\)/g,`(${NA()})`);document.getElementById("prev").innerHTML=prevHTML(w);
+  state.draft=w;st.textContent="Pronto. Confira o resumo abaixo e confirme."+avisoFora(fora).replace(/\{power\}|\(power\)/g,`(${NP()})`).replace(/\(pace\)/g,`(${NA()})`);{const pv=document.getElementById("prev");if(pv)pv.innerHTML=prevHTML(w)}
  }catch(e){
   if(e&&e.name==="AbortError"){st.textContent="Geração interrompida.";return;}
   const m={
    no_key:"Cole sua chave gratuita do Google AI Studio acima (ou em Painel > Ajustes) para gerar treinos automaticamente.",
    bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
    rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
-   overloaded:IA_CHEIA,
+   overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,
    formato:"A resposta veio num formato inesperado. Tente gerar de novo."
   };
   st.textContent=m[e&&e.code]||"Não foi possível gerar agora. Tente de novo em instantes.";
@@ -1939,9 +2002,11 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
 }
 
 async function usar(){
- save("semanas/v2-"+state.week.id,state.week);
+ /* toque duplo no botão: a segunda vez não acha mais rascunho e para aqui (antes travava o app) */
+ const draft=state.draft;if(!draft)return;state.draft=null;state.gen.msg="";
+ if(state.week.id===state.currentId)save("semanas/v2-"+state.week.id,state.week);
  const prevWeek=state.week;
- state.week=state.draft;state.draft=null;state.currentId=state.week.id;state.hist=null;
+ state.week=draft;state.currentId=state.week.id;state.hist=null;
  save("semanas/v2-"+state.week.id,state.week);
  save(P_PLAN,state.week);
  const map=new Map(state.weeks.map(x=>[x.id,x]));
@@ -1956,7 +2021,9 @@ async function usar(){
 }
 async function switchWeek(id){
  if(!id||id===state.week.id)return;
- save("semanas/v2-"+state.week.id,state.week);
+ /* só guarda a semana que está saindo se for a atual (sempre atualizada pela nuvem);
+    uma semana antiga aberta aqui pode estar velha e apagaria o que o outro editou nela */
+ if(state.week.id===state.currentId)save("semanas/v2-"+state.week.id,state.week);
  const target=await load("semanas/v2-"+id);
  if(!valid(target)){banner("Não foi possível carregar essa semana.");return;}
  state.week=target;state.editing=null;
@@ -2001,7 +2068,7 @@ const hms=sec=>{sec=Math.round(sec);const h=Math.floor(sec/3600),m=Math.floor(se
 function secOf(t){t=String(t||"").trim().replace(",",".");if(/^\d+(\.\d+)?$/.test(t))return +t;const p=t.split(":").map(Number);if(p.some(isNaN))return 0;return p.reduce((a,b)=>a*60+b,0)}
 function isoDate(v){v=String(v||"").trim();let m=v.match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
  m=v.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(m){const y=m[3].length===2?"20"+m[3]:m[3];return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
- const d=new Date(v);return isNaN(d)?null:d.toISOString().slice(0,10)}
+ const d=new Date(v);return isNaN(d)?null:isoLocal(d)}
 const RUN=/run|corr|trilha|esteira|treadmill|trail/i;
 function heuristic(text){
  const rows=parseCSV(text.replace(/^\uFEFF/,""));if(rows.length<2)return null;
@@ -2042,7 +2109,7 @@ const ERR=e=>({
  no_key:"Para ler PDFs ou imagens com IA, salve sua chave gratuita do Google AI Studio em Painel > Ajustes. (Planilhas CSV do Garmin funcionam sem chave!)",
  bad_key:"A chave API do Gemini parece inválida. Confira em Painel > Ajustes.",
  rate_limited:"Muitas solicitações agora. Tente de novo em alguns minutos.",
- overloaded:IA_CHEIA,
+ overloaded:IA_CHEIA,cortada:IA_CORTADA,origem:IA_ORIGEM,
  formato:"A resposta da IA veio num formato inesperado. Tente de novo.",
  script:"Não foi possível abrir este tipo de arquivo agora. Tente em CSV, TXT ou PDF.",
  vazio:"Não encontrei nada para importar neste arquivo.",
@@ -2097,18 +2164,22 @@ async function salvarRes(){
  const {list,who}=r;
  try{
   const byWeek={};list.forEach(a=>{(byWeek[mondayOf(a.data)]=byWeek[mondayOf(a.data)]||[]).push(a)});
-  let nCur=0;const saves=[];
+  let nCur=0;const saves=[],chg={};
   for(const [wk,arr] of Object.entries(byWeek)){
    const path="resultados/v2-"+wk;const cur=wk===state.week.id?state.res:((await load(path))||{pace:{},power:{}});
    cur[who]=cur[who]||{};
+   const dias={};
    arr.forEach(a=>{const d=(new Date(a.data+"T12:00:00").getDay()+6)%7;const l=cur[who][d]=cur[who][d]||[];
-    const key=x=>[x.data,x.km,x.tempo].join("|");if(l.some(x=>key(x)===key(a)))return;l.push(a);
+    if(l.some(x=>resKey(x)===resKey(a)))return;l.push(a);dias[d]=l;
     if(wk===state.week.id){nCur++;const day=state.week.dias[d];
-     if(who==="pace"){if(a.run&&day.pace.corrida)state.log.chk[d+":pace:corrida"]=true;else state.log.chk[d+":pace:treino"]=true}
-     else state.log.chk[d+":power:treino"]=true}});
-   if(wk===state.week.id)state.res=cur;saves.push(saveNow(path,cur));
+     const k=who==="pace"?(a.run&&day.pace.corrida?d+":pace:corrida":d+":pace:treino"):d+":power:treino";
+     state.log.chk[k]=true;chg[k]=true}});
+   if(wk===state.week.id)state.res=cur;
+   /* grava só os dias que mudaram desta pessoa, sem sobrescrever o que o outro aparelho salvou */
+   if(Object.keys(dias).length)saves.push(mergeNow(path,{[who]:dias},cur));
   }
-  saves.push(saveLog({chk:state.log.chk}));
+  /* marca como feito só o que esta importação marcou, sem reenviar os outros checks */
+  if(Object.keys(chg).length)saves.push(saveLog({chk:chg}));
   state.rh.loaded=false;/* a aba Resultados recarrega o histórico com o que acabou de entrar */
   const resumo=`${list.length} atividade${list.length>1?"s":""} lida${list.length>1?"s":""}. ${nCur} nova${nCur!==1?"s":""} nesta semana, ligada${nCur!==1?"s":""} aos dias e marcada${nCur!==1?"s":""} como feita${nCur!==1?"s":""}.`;
   render();say(id,resumo+" Salvando…");
@@ -2125,11 +2196,14 @@ async function importDieta(file){
   const r=await ask(`Este é um plano alimentar de nutricionista. Transcreva fielmente, sem inventar nada e sem mudar quantidades. Responda APENAS JSON: {"data":"data do plano como aparece ou vazio","kcal":número ou null,"titulo":"objetivo ou nome do plano, curto, ou vazio","resumo":"1 frase com objetivo e restrições do plano, ou vazio","macros":["metas do plano, ex.: Proteínas: 160 g; vazio se não houver"],"notas":"suplementação e orientações gerais, ou vazio","refeicoes":[{"k":"identificador curto sem espaços (cafe, almoco, sobremesa, pre, jantar, ceia, lanche...)","h":"HH:MM","n":"nome da refeição","p":["itens da opção principal com quantidade"],"s":[["itens da substituição 1"],["itens da substituição 2"]],"obs":"observações da refeição ou vazio"}]}. Coloque receitas e observações de uma substituição como último item dela. Não inclua nome, e-mail ou dados pessoais. Use português do Brasil.`,input);
   if(!r||!Array.isArray(r.refeicoes)||!r.refeicoes.length)throw {code:"vazio"};
   r.refeicoes.forEach((m,i)=>{m.k=strip_(m.k||m.n||"r"+i).replace(/[^a-z0-9]/g,"")||"r"+i;m.p=m.p||[];m.s=m.s||[]});
-  r.who=who;state.dietDraft=r;say(id,"");
-  document.getElementById("prev-dieta").innerHTML=`<div class="panel" style="margin-bottom:18px"><h3>Nova dieta ${esc(doDa(who))}${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
+  r.who=who;state.dietDraft=r;say(id,"");render();
+ }catch(e){say(id,ERR(e))}
+}
+/* prévia da dieta importada: montada a partir de state, para não sumir quando a tela é redesenhada */
+function dietPrevHTML(r){const who=r.who;
+ return `<div class="panel" style="margin-bottom:18px"><h3>Nova dieta ${esc(doDa(who))}${r.data?` de ${esc(r.data)}`:""}</h3><p class="sub">${r.kcal?Number(r.kcal).toLocaleString("pt-BR")+" kcal. ":""}Confira se as refeições batem com o documento antes de trocar.</p>
    ${r.refeicoes.map(m=>`<div class="row"><span><b>${esc(m.h||"")}</b> ${esc(m.n)}</span><span>${m.p.length} itens, ${m.s.length} substituições</span></div>`).join("")}
    <div class="actions"><button class="btn" data-act="usar-dieta">Usar esta dieta</button><button class="btn ghost" data-act="desc-dieta">Descartar</button></div></div>`;
- }catch(e){say(id,ERR(e))}
 }
 const DIET_EWERTON_PADRAO=DIET_EWERTON;
 function applyDietPo(d){
@@ -2159,6 +2233,8 @@ function vBib(v){
 }
 async function importLib(input,nome){
  const id="upl-lib";
+ /* toque duplo: não manda o mesmo arquivo duas vezes (duplicaria os treinos) */
+ if(state.libBusy)return;state.libBusy=true;
  try{
   if(!input.images&&!(input.text||"").trim())throw {code:"vazio"};
   const chunks=input.images?[input]:(()=>{const t=input.text,out=[];for(let i=0;i<t.length;i+=18000)out.push({text:t.slice(i,i+18000)});return out})();
@@ -2178,7 +2254,7 @@ async function importLib(input,nome){
   lsSet("biblioteca",state.lib);
   if(!total)throw {code:"vazio"};
   render();say(id,`${total} treino${total>1?"s":""} adicionado${total>1?"s":""} à biblioteca.`);
- }catch(e){say(id,ERR(e))}
+ }catch(e){say(id,ERR(e))}finally{state.libBusy=false}
 }
 function libForPrompt(){if(!state.lib.length)return "vazia";let out="";for(const t of state.lib){const line=`- ${t.titulo} [${t.categoria}, ${t.para}]: `+(t.blocos||[]).map(b=>b.nome+": "+(b.itens||[]).map(i=>typeof i==="string"?i:i.t).join("; ")).join(" | ")+"\n";if(out.length+line.length>14000)break;out+=line}return out}
 function aplicar(id,d,slot){
@@ -2216,7 +2292,7 @@ view.addEventListener("click",e=>{
   const w=t.dataset.who,d=+t.dataset.d,l=state.res[w]&&state.res[w][d];if(!l)return;
   const i=l.findIndex(x=>resKey(x)===t.dataset.key);if(i<0)return;
   if(!confirm(`Remover este resultado ${doDa(w)}?`))return;
-  l.splice(i,1);saveNow(pRes(),state.res).then(ok=>say("upl-res",ok?"Resultado removido ✓":"Removido só neste aparelho: sem conexão com a nuvem."));
+  l.splice(i,1);mergeNow(pRes(),{[w]:{[d]:l}},state.res).then(ok=>say("upl-res",ok?"Resultado removido ✓":"Removido só neste aparelho: sem conexão com a nuvem."));
   state.rh.loaded=false;render();return;
  }
  if(t.dataset.act==="carga-salvar"){salvarCarga(t.closest(".form-carga"));return}
@@ -2272,7 +2348,7 @@ view.addEventListener("click",e=>{
    const raw=document.getElementById("paste-week-json").value.trim().replace(/^```json\s*/i,"").replace(/```\s*$/,"");
    const w=JSON.parse(raw);if(!valid(w))throw 0;
    w.dias.forEach(d=>{if(!d.pace.corrida)d.pace.corrida=null});
-   state.draft=w;document.getElementById("prev").innerHTML=prevHTML(w);if(st)st.textContent="Semana carregada! Confira abaixo e clique em Usar esta semana.";
+   state.draft=w;{const pv=document.getElementById("prev");if(pv)pv.innerHTML=prevHTML(w)}if(st)st.textContent="Semana carregada! Confira abaixo e clique em Usar esta semana.";
   }catch(err){if(st)st.textContent="Formato inválido. Cole o bloco JSON completo da semana."}
   return;
  }
@@ -2304,13 +2380,19 @@ view.addEventListener("click",e=>{
   if(d.who==="power"){const doc={data:d.data||"",kcal:d.kcal||null,titulo:d.titulo||"",resumo:d.resumo||"",macros:d.macros||[],notas:d.notas||"",refeicoes:d.refeicoes};applyDietPo(doc);save("dieta-ewerton/v2",doc)}
   else{applyDiet(d);save("dieta/v2",{data:state.diet.data,kcal:state.diet.kcal,refeicoes:MEALS_JOANNA})}
   state.dietDraft=null;render();return}
- if(act==="desc-dieta"){state.dietDraft=null;document.getElementById("prev-dieta").innerHTML="";return}
+ if(act==="desc-dieta"){state.dietDraft=null;render();return}
  if(act==="aplicar"){const card=t.closest(".apply");aplicar(t.dataset.id,+card.querySelector('[data-role="dia"]').value,card.querySelector('[data-role="slot"]').value);return}
  if(act==="del-lib")return delLib(t.dataset.id);
  if(act==="save-key"){const inp=document.getElementById("nova-apikey");const val=(inp&&inp.value||"").trim();if(val){localStorage.setItem("gemini_api_key",val);state.cfg.geminiKey=val;save(P_CFG,state.cfg);render();}return}
  if(t.dataset.cat){state.libFilter=t.dataset.cat;render();return}
  if(t.id==="gerar")gerar(); if(t.id==="parar")ctl?.abort(); if(t.id==="usar")usar();
- if(t.id==="desc"){state.draft=null;document.getElementById("prev").innerHTML="";document.getElementById("gst").textContent=""}
+ if(t.id==="desc"){state.draft=null;{const pv=document.getElementById("prev");if(pv)pv.innerHTML=""}GEN_ST.textContent=""}
+});
+/* atualização do outro aparelho que esperou a pessoa terminar de digitar: aplica ao sair do campo
+   (com um pequeno atraso, para não engolir o toque num botão logo em seguida) */
+view.addEventListener("focusout",()=>{
+ if(!state.pendRender)return;
+ setTimeout(()=>{if(state.pendRender&&!digitando()){state.pendRender=false;render()}},400);
 });
 /* guarda o rascunho da observação a cada tecla, para não perder o texto se a tela for redesenhada */
 view.addEventListener("input",e=>{
@@ -2341,20 +2423,28 @@ document.getElementById("fileIn").addEventListener("change",async e=>{const f=e.
 });
 
 /* Inicialização e Observadores em Tempo Real */
-function applyCfg(c){if(!c)return;if(Array.isArray(c.paces))state.cfg.paces=c.paces;if(c.nomes)state.cfg.nomes={...state.cfg.nomes,...c.nomes};if(c.pesos)state.cfg.pesos={...state.cfg.pesos,...c.pesos};if(typeof c.prova==="string")state.cfg.prova=c.prova;if(typeof c.geminiKey==="string"&&c.geminiKey){state.cfg.geminiKey=c.geminiKey;localStorage.setItem("gemini_api_key",c.geminiKey)}}
+function applyCfg(c){if(!c)return;if(Array.isArray(c.paces))state.cfg.paces=c.paces;if(c.nomes)state.cfg.nomes={...state.cfg.nomes,...c.nomes};if(c.pesos)state.cfg.pesos={...state.cfg.pesos,...c.pesos};if(typeof c.prova==="string")state.cfg.prova=c.prova;}
 function applyLog(l){l=l||{};state.log={chk:l.chk||{},opt:l.opt||{},dietStatus:l.dietStatus||{},dietObs:l.dietObs||{},agua:l.agua||{},rpe:l.rpe||{},prontidao:l.prontidao||{},cargas:l.cargas||{}}}
 
 let unsubWeek=[];
+/* a aba Resultados guarda a semana atual: mantém ela apontando para os dados vivos */
+function syncRH(){const W=state.rh&&state.rh.weeks&&state.rh.weeks[state.week.id];if(W)Object.assign(W,{res:state.res,log:state.log,plan:state.week})}
+/* atualização vinda do outro aparelho: se a pessoa está digitando, espera ela sair do campo para redesenhar */
+function digitando(){const a=document.activeElement,v=document.getElementById("view");return !!(a&&v&&v.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=="checkbox"&&a.type!=="radio")}
+function renderRemoto(){if(digitando()){state.pendRender=true;return}render()}
 function bindWeekWatchers(){
  unsubWeek.forEach(fn=>{try{fn()}catch(e){}});
  unsubWeek=[];
  if(!window.fb||!window.fb.ready)return;
- unsubWeek.push(window.fb.watch(pLog(),(l)=>{
-  applyLog(l);lsSet(pLog(),state.log);render();
+ const pl=pLog(),pr=pRes();
+ unsubWeek.push(window.fb.watch(pl,(l)=>{
+  if(pl!==pLog())return; /* chegou atrasado de uma semana que já foi trocada */
+  applyLog(l);lsSet(pl,state.log);syncRH();renderRemoto();
  }));
- unsubWeek.push(window.fb.watch(pRes(),(rr)=>{
+ unsubWeek.push(window.fb.watch(pr,(rr)=>{
+  if(pr!==pRes())return;
   state.res={pace:(rr&&rr.pace)||{},power:(rr&&rr.power)||{}};
-  lsSet(pRes(),state.res);render();
+  lsSet(pr,state.res);syncRH();renderRemoto();
  }));
 }
 
@@ -2367,21 +2457,22 @@ async function initCloud(){
  try{await window.fb.get(P_CFG);await window.fb.merge("status/ping",{t:Date.now()})}
  catch(e){fbFail(e);return}
  state.connected=true;syncOk();
+ /* primeiro manda o que foi marcado enquanto o app ainda não estava conectado; senão a nuvem apagaria */
+ await enviarPendentes();
 
- const hw=await load(P_PLAN);if(valid(hw)){state.week=hw;state.currentId=hw.id}
- const hwl=await load(P_WEEKS);if(hwl&&Array.isArray(hwl.list))state.weeks=hwl.list;
+ /* carrega tudo ao mesmo tempo (antes era um depois do outro) */
+ const [hw,hwl,hc,dPa,dPo,items]=await Promise.all([load(P_PLAN),load(P_WEEKS),load(P_CFG),load("dieta/v2"),load("dieta-ewerton/v2"),window.fb.listLib().catch(()=>null)]);
+ if(valid(hw)){state.week=hw;state.currentId=hw.id}
+ if(hwl&&Array.isArray(hwl.list))state.weeks=hwl.list;
  else state.weeks=[{id:state.week.id,nome:state.week.nome}];
- applyLog(await load(pLog()));
- const hc=await load(P_CFG);if(hc)applyCfg(hc);
- const hrr=await load(pRes());if(hrr)state.res={pace:hrr.pace||{},power:hrr.power||{}};
- applyDiet(await load("dieta/v2"));
- applyDietPo(await load("dieta-ewerton/v2"));
-
- try{
-  const items=await window.fb.listLib();
-  state.lib=items.sort((a,b)=>(a.criado||0)-(b.criado||0));
-  lsSet("biblioteca",state.lib);
- }catch(e){}
+ if(hc)applyCfg(hc);
+ applyDiet(dPa);applyDietPo(dPo);
+ const [hl,hrr]=await Promise.all([load(pLog()),load(pRes())]);
+ applyLog(hl);
+ if(hrr)state.res={pace:hrr.pace||{},power:hrr.power||{}};
+ if(items){state.lib=items.sort((a,b)=>(a.criado||0)-(b.criado||0));lsSet("biblioteca",state.lib)}
+ /* o histórico pode ter sido montado antes de conectar, só com a semana atual: recarrega */
+ state.hist=null;state.histLoading=false;
 
  /* Sincronização em tempo real entre dispositivos */
  window.fb.watch(P_PLAN,(w)=>{
@@ -2390,13 +2481,13 @@ async function initCloud(){
   state.currentId=w.id;lsSet(P_PLAN,w);
   if(!wasCurrent)return; /* quem está olhando uma semana antiga continua nela */
   const changed=w.id!==state.week.id;state.week=w;
-  if(changed){state.hist=null;load(pLog()).then(l=>{applyLog(l);load(pRes()).then(rr=>{state.res={pace:(rr&&rr.pace)||{},power:(rr&&rr.power)||{}};bindWeekWatchers();render()})})}
-  else render();
+  if(changed){state.hist=null;load(pLog()).then(l=>{applyLog(l);load(pRes()).then(rr=>{state.res={pace:(rr&&rr.pace)||{},power:(rr&&rr.power)||{}};syncRH();bindWeekWatchers();renderRemoto()})})}
+  else{syncRH();renderRemoto()}
  });
- window.fb.watch(P_CFG,(c)=>{applyCfg(c);lsSet(P_CFG,state.cfg);render()});
- window.fb.watch(P_WEEKS,(wl)=>{if(wl&&Array.isArray(wl.list)){state.weeks=wl.list;render()}});
- window.fb.watch("dieta/v2",(d)=>{applyDiet(d);lsSet("dieta/v2",d);render()});
- window.fb.watch("dieta-ewerton/v2",(d)=>{applyDietPo(d);lsSet("dieta-ewerton/v2",d);render()});
+ window.fb.watch(P_CFG,(c)=>{applyCfg(c);lsSet(P_CFG,state.cfg);renderRemoto()});
+ window.fb.watch(P_WEEKS,(wl)=>{if(wl&&Array.isArray(wl.list)){state.weeks=wl.list;renderRemoto()}});
+ window.fb.watch("dieta/v2",(d)=>{applyDiet(d);lsSet("dieta/v2",d);renderRemoto()});
+ window.fb.watch("dieta-ewerton/v2",(d)=>{applyDietPo(d);lsSet("dieta-ewerton/v2",d);renderRemoto()});
  bindWeekWatchers();
  render();
 }

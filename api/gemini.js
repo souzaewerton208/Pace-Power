@@ -25,12 +25,30 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido" });
   if (!KEY) return res.status(503).json({ error: "Chave do Gemini não configurada na Vercel" });
 
-  // Só aceita pedidos vindos do próprio app
+  // Só aceita pedidos vindos do próprio app: o endereço de origem tem que ser exatamente este site.
+  // (Antes, um pedido sem origem, como de um script, passava, e "site-falso.com/?<este site>" também.)
   const host = req.headers.host || "";
-  const origin = req.headers.origin || req.headers.referer || "";
-  if (origin && !origin.includes(host)) return res.status(403).json({ error: "Origem não permitida" });
+  let origemHost = "";
+  try { origemHost = new URL(req.headers.origin || req.headers.referer || "").host; } catch (e) {}
+  if (!host || origemHost !== host) return res.status(403).json({ error: "Origem não permitida" });
 
-  const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  // Monta o pedido aqui em vez de repassar o que chegou: só texto e imagens, resposta em JSON,
+  // sem ferramentas extras e com limite de tamanho. Assim ninguém usa a chave para outra coisa.
+  let entrada;
+  try { entrada = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {}); }
+  catch (e) { return res.status(400).json({ error: "Pedido inválido" }); }
+  const partes = (((entrada.contents || [])[0] || {}).parts || [])
+    .filter((p) => p && (typeof p.text === "string" || (p.inlineData && typeof p.inlineData.data === "string")))
+    .slice(0, 8)
+    .map((p) => (typeof p.text === "string"
+      ? { text: p.text }
+      : { inlineData: { mimeType: String(p.inlineData.mimeType || "image/jpeg"), data: p.inlineData.data } }));
+  if (!partes.length) return res.status(400).json({ error: "Pedido vazio" });
+  const gcIn = entrada.generationConfig || {};
+  const gc = { responseMimeType: "application/json", maxOutputTokens: Math.min(+gcIn.maxOutputTokens || 65536, 65536) };
+  const nivel = String((gcIn.thinkingConfig && gcIn.thinkingConfig.thinkingLevel) || "").toUpperCase();
+  if (["MINIMAL", "LOW", "MEDIUM", "HIGH"].includes(nivel)) gc.thinkingConfig = { thinkingLevel: nivel };
+  const body = JSON.stringify({ contents: [{ parts: partes }], generationConfig: gc });
 
   // Modelo principal e reservas, em ordem. Na Vercel, a variável GEMINI_MODEL pode trocar a lista
   // sem mexer no código (nomes separados por vírgula, ex.: "gemini-3.6-flash,gemini-3.5-flash").
