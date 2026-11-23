@@ -430,6 +430,9 @@ details[open].refeicoes>summary::after,details[open].bloco>summary::after{transf
 details.refeicoes.ok{border-color:var(--ok)} details.refeicoes.ok>summary b{color:var(--ok)}
 details.refeicoes>.chk{padding:0 12px 12px}
 details.bloco{margin-top:18px} details.bloco .adh{margin:0;padding:0 12px 12px}
+/* dose de cada exercício (3 × 10, 4 × 40 s) e rounds do bloco, sempre à vista */
+.dose{display:inline-block;font-weight:800;font-variant-numeric:tabular-nums;font-size:.82rem;background:var(--ink);color:var(--on-ink);border-radius:999px;padding:1px 9px;margin-right:7px;vertical-align:1px;white-space:nowrap}
+.rounds{display:inline-block;font-size:.78rem;font-weight:800;font-stretch:100%;color:var(--power);background:var(--power-soft);border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:3px;letter-spacing:0}
 /* ciclo de evolução: "por que mudou", aprendizados e memória do treinador */
 .evolucao{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin:4px 0 14px;font-size:.9rem}
 .evolucao p{margin:0 0 6px} .evolucao ul{margin:0;padding-left:18px;display:grid;gap:4px}
@@ -1209,18 +1212,30 @@ function sugestaoHist(i,ctx){
  const pq=!esf?"":esf<=7?`, esforço ${esf}/10: pode subir`:esf>=9?`, esforço ${esf}/10: segure um pouco`:`, esforço ${esf}/10: mantenha`;
  return `Sugestão de hoje: ~${num(kg)} kg para ${r} repetições (último: ${num(u.kg)} kg × ${u.reps} em ${fmt(new Date(u.data+"T12:00:00"))}${pq})`;
 }
+/* dose do exercício sempre à vista, a partir dos números (séries, repetições ou tempo, lados):
+   "3 × 10", "4 × 40 s", "10 reps por lado"; em circuito é o que se faz em cada round */
+function doseTxt(i,b){
+ if(!i||typeof i!=="object")return "";
+ const se=+i.series||0,re=+i.reps||0,sg=+i.seg||0,lado=+i.lados>1?" por lado":"";
+ if(!re&&!sg)return "";
+ const q=re?`${re} rep${re>1?"s":""}`:segTxt(sg),circ=b&&+b.voltas>1;
+ if(circ)return `${q}${lado}${se>1?` × ${se}`:""}`;
+ return se>1?`${se} × ${re?re:segTxt(sg)}${lado}`:`${q}${lado}`;
+}
 function item(i,pace,ctx){
  const t=txtI(i),d=(i&&typeof i==="object"&&i.d)||howOf(t),o=i&&typeof i==="object"?i:{};
  const pr=ctx&&ctx.principal===i,hs=pr?sugestaoHist(i,ctx):"",cg=o.carga||(ctx&&ctx.b&&!hs?cargaPadrao(i,ctx.b,ctx.s):"");
  const de=+o.desc&&!(ctx&&ctx.b&&+ctx.b.voltas>1)?`descanso ${segTxt(+o.desc)}`:"";
  const meta=[cg?`<span class="cg">Carga: ${esc(nm(cg))}</span>`:"",de?`<span>${de}</span>`:""].filter(Boolean).join("");
- return `<li${pr?` class="princ"`:""}>${pr?`<span class="pbadge">★ Principal</span> `:""}${rich(t,pace)}${meta?`<span class="pres">${meta}</span>`:""}${hs?`<span class="sug">${esc(hs)}</span>`:""}${pr&&ctx.who?`<span class="how">Este é o exercício de referência do dia: registre a carga da série mais pesada depois do treino.</span>`:""}${d?`<span class="how">${esc(nm(d))}</span>`:""}</li>`;
+ const dose=doseTxt(i,ctx&&ctx.b);
+ return `<li${pr?` class="princ"`:""}>${pr?`<span class="pbadge">★ Principal</span> `:""}${dose?`<span class="dose">${esc(dose)}</span>`:""}${rich(t,pace)}${meta?`<span class="pres">${meta}</span>`:""}${hs?`<span class="sug">${esc(hs)}</span>`:""}${pr&&ctx.who?`<span class="how">Este é o exercício de referência do dia: registre a carga da série mais pesada depois do treino.</span>`:""}${d?`<span class="how">${esc(nm(d))}</span>`:""}</li>`;
 }
 const descP=s=>s.desc?`<p class="desc">${esc(nm(s.desc))}</p>`:"";
 function blocos(s,pace,who,d){
  const principal=principalDe(s);
  return (s.blocos||[]).map(b=>{const c=comoBloco(b),L=modoDe(b)?"ol":"ul",ctx={b,s,principal,who,d};
-  return `<div class="bl"><h4>${esc(nm(b.nome))}</h4>${c?`<p class="como">${c}</p>`:""}<${L}>${(b.itens||[]).map(i=>item(i,pace,ctx)).join("")}</${L}></div>`}).join("");
+  const v=+b.voltas||0,rounds=v>1?`${v} rounds`:modoDe(b)==="amrap"||modoDe(b)==="emom"?"":v===1&&modoDe(b)==="circuito"?"1 round":"";
+  return `<div class="bl"><h4>${esc(nm(b.nome))}${rounds?` <span class="rounds">${rounds}</span>`:""}</h4>${c?`<p class="como">${c}</p>`:""}<${L}>${(b.itens||[]).map(i=>item(i,pace,ctx)).join("")}</${L}></div>`}).join("");
 }
 const ck=(k,l)=>`<label><input type="checkbox" data-k="${k}" ${isC(k)?"checked":""}>${l}</label>`;
 
@@ -2014,7 +2029,7 @@ function resumo(){const D=state.week.dias,c=(w,k)=>D.filter((_,i)=>isC(`${i}:${w
  return `Power fez ${c("power","treino")} de ${N} treinos. Pace fez ${D.filter((d,i)=>d.pace.corrida&&isC(i+":pace:corrida")).length} de ${D.filter(d=>d.pace.corrida).length} corridas e ${c("pace","treino")} de ${N} sessões complementares. Sono 7h+: Power ${c("power","sono")}, Pace ${c("pace","sono")} dias. Refeições: Power ${mealsPo} de ${DIET_EWERTON.refeicoes.length*N}, Pace ${mealsPa} de ${MEALS_JOANNA.length*N}.`}
 
 /* ===== Treinos individuais: refazer só de um atleta ===== */
-const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número (tempo real pelo KPI),"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","voltas":número (1 se não for circuito),"modo":"series" (todas as séries de um exercício antes de passar ao próximo) | "circuito" (exercícios em sequência, um atrás do outro, descanso só ao fim da volta) | "superserie" (pares sem pausa) | "emom" | "amrap" (vazio em aquecimento e mobilidade),"como":"1 frase dizendo como executar o bloco, ex.: 'faça os 4 em sequência sem pausa e descanse 90 s ao fim de cada volta'","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado","series":número,"reps":número (0 se for por tempo),"seg":segundos de trabalho por série quando for por tempo (ex.: prancha 40, bike 600),"desc":segundos de descanso depois de cada série,"lados":2 se for unilateral feito dos dois lados, senão 1,"carga":"carga sugerida concreta: % do 1RM, kg (ex.: 'halteres de 10 a 12 kg cada', 'kettlebell 16 kg'), ou 'peso do corpo', sempre com quantas repetições devem sobrar (RIR)","principal":true SOMENTE no exercício-chave do dia}]}],"nota":"texto curto ou vazio"}. EXERCÍCIO PRINCIPAL: em toda sessão de força ou musculação marque exatamente 1 item com "principal":true (o levantamento mais importante, com séries e repetições, fora de circuito, ex.: agachamento, levantamento terra, supino, hip thrust); é nele que o atleta registra a carga. CARGA: todo exercício com carga externa precisa de "carga"; quando houver carga registrada no histórico, prescreva o principal em kg. MODO: todo bloco de treino precisa de "modo" e "como", deixando claro se os exercícios são feitos em sequência ou por séries`;
+const SESSAO_SPEC=`Sessao: {"titulo","desc":"1 frase simples explicando o objetivo do treino","tipo","min":número (tempo real pelo KPI),"rpe":1-10,"km":número,"zonas":[5 números, minutos em Z1..Z5 só do trabalho aeróbico],"blocos":[{"nome","voltas":número (1 se não for circuito),"modo":"series" (todas as séries de um exercício antes de passar ao próximo) | "circuito" (exercícios em sequência, um atrás do outro, descanso só ao fim da volta) | "superserie" (pares sem pausa) | "emom" | "amrap" (vazio em aquecimento e mobilidade),"como":"1 frase dizendo como executar o bloco, ex.: 'faça os 4 em sequência sem pausa e descanse 90 s ao fim de cada volta'","itens":[{"t":"exercício com séries, repetições ou tempo","d":"1 frase curta e clara de como executar o movimento, para um leigo não interpretar errado","series":número,"reps":número (0 se for por tempo),"seg":segundos de trabalho por série quando for por tempo (ex.: prancha 40, bike 600),"desc":segundos de descanso depois de cada série,"lados":2 se for unilateral feito dos dois lados, senão 1,"carga":"carga sugerida concreta: % do 1RM, kg (ex.: 'halteres de 10 a 12 kg cada', 'kettlebell 16 kg'), ou 'peso do corpo', sempre com quantas repetições devem sobrar (RIR)","principal":true SOMENTE no exercício-chave do dia}]}],"nota":"texto curto ou vazio"}. EXERCÍCIO PRINCIPAL: em toda sessão de força ou musculação marque exatamente 1 item com "principal":true (o levantamento mais importante, com séries e repetições, fora de circuito, ex.: agachamento, levantamento terra, supino, hip thrust); é nele que o atleta registra a carga. CARGA: todo exercício com carga externa precisa de "carga"; quando houver carga registrada no histórico, prescreva o principal em kg. MODO: todo bloco de treino precisa de "modo" e "como", deixando claro se os exercícios são feitos em sequência ou por séries. DOSE EM TUDO (obrigatório, do aquecimento até o último bloco, inclusive ativação, mobilidade e volta à calma): todo bloco tem "voltas" com o número de rounds (1 quando for por séries) e todo exercício tem "series" e "reps" (ou "seg") preenchidos com números; o texto "t" também traz a dose, ex.: "3 × 10 agachamento goblet", "10 polichinelos", "Bike 5 min". Nunca use "à vontade", "até a falha", "alguns minutos" ou "algumas repetições" sem número.`;
 /* regras de tempo real (KPI) que o app usa para conferir cada sessão */
 const KPI_SPEC=`TEMPO REAL (KPI): todo exercício precisa de "series", "reps" (ou "seg") e "desc"; blocos em circuito usam "voltas" (com series 1 em cada item). O app calcula o tempo real assim: cada repetição leva 4 s; exercício por tempo usa "seg"; soma os descansos; cada exercício de força (com repetições, fora de circuito) soma 60 s de preparação (ajustar carga, trocar de aparelho); em circuitos, 15 s de troca entre exercícios a cada volta. Aquecimento, cardio contínuo e mobilidade entram como item por tempo (series 1, reps 0, seg = duração). Exemplos da conta: 4 séries × 8 repetições com 60 s de descanso = 4×8×4 + 4×60 + 60 = 428 s (7,1 min); 3 séries × 10 por perna (lados 2) com 45 s = 3×2×10×4 + 3×45 + 60 = 435 s (7,3 min); prancha 3×40 s com 30 s = 3×40 + 3×30 = 210 s (3,5 min). Some item por item ANTES de responder e mire no MEIO da faixa pedida (ex.: 55 min numa faixa de 50 a 60). Monte séries, exercícios e descansos para o tempo real cair na faixa e coloque esse valor em "min".`;
 const PERFIL={
