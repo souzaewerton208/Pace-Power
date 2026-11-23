@@ -430,6 +430,14 @@ details[open].refeicoes>summary::after,details[open].bloco>summary::after{transf
 details.refeicoes.ok{border-color:var(--ok)} details.refeicoes.ok>summary b{color:var(--ok)}
 details.refeicoes>.chk{padding:0 12px 12px}
 details.bloco{margin-top:18px} details.bloco .adh{margin:0;padding:0 12px 12px}
+/* ciclo de evolução: "por que mudou", aprendizados e memória do treinador */
+.evolucao{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin:4px 0 14px;font-size:.9rem}
+.evolucao p{margin:0 0 6px} .evolucao ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.memoria{padding:0 14px 14px} .memoria h4{margin:12px 0 6px;font-size:.95rem}
+.memoria ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.memoria li{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:8px 10px;font-size:.88rem}
+.memoria li small{color:var(--muted);white-space:nowrap}
+.memoria .link{color:var(--muted);flex:none}
 /* uma pessoa só no dia: coluna única, centralizada */
 .cols.one{grid-template-columns:minmax(0,760px);justify-content:center}
 .diet-tabs.quem{margin-bottom:0}
@@ -1909,12 +1917,13 @@ function vNova(v){
  <div class="actions"><button class="btn" id="gerar" ${state.gen.busy?"disabled":""}>${ind?`Refazer treinos ${esc(doDa(gw))}`:"Gerar próxima semana"}</button><button class="btn ghost" id="parar" ${state.gen.busy?"":"hidden"}>Parar</button></div>
  <div class="status" id="gst">${esc(state.gen.msg||"")}</div>
  <div id="prev">${ind?(state.partDraft&&state.partDraft.who===gw?partPrevHTML(state.partDraft):""):(state.draft?prevHTML(state.draft):"")}</div>
+ ${memoriaHTML()}
  <details style="margin-top:24px"><summary class="lbl" style="cursor:pointer">Ou colar semana pronta (JSON gerado no chat)</summary>
   <textarea class="paste" id="paste-week-json" placeholder="Cole aqui o JSON da semana para carregar direto sem usar chave IA."></textarea>
   <div class="actions"><button class="btn sm ghost" data-act="paste-week">Carregar semana colada</button></div>
  </details></div>`;
 }
-function prevHTML(w){return `<div class="panel" style="margin-top:16px"><h3>${esc(w.nome)}: ${esc(w.fase||"")}</h3><p class="sub">${esc(nm(w.foco))}</p>
+function prevHTML(w){return `<div class="panel" style="margin-top:16px"><h3>${esc(w.nome)}: ${esc(w.fase||"")}</h3><p class="sub">${esc(nm(w.foco))}</p>${aprendizadosHTML(w.ajustes,w.aprendizados)}
  ${w.dias.map((x,i)=>`<div class="row"><b>${AB[i]}</b><span style="text-align:right"><span style="color:var(--power)">${esc(nm(x.power.titulo))} (${+x.power.min||0} min)</span><br><span style="color:var(--pace)">${x.pace.corrida?esc(x.pace.corrida.titulo)+` (${+x.pace.corrida.min||0} min) + `:""}${esc(nm(x.pace.a.titulo))} (${+x.pace.a.min||0} min) ou ${esc(nm(x.pace.b.titulo))} (${+x.pace.b.min||0} min)</span></span></div>`).join("")}
  <div class="actions"><button class="btn" id="usar">Usar esta semana</button><button class="btn ghost" id="desc">Descartar</button></div></div>`}
 
@@ -2044,8 +2053,78 @@ Evite alta intensidade no mesmo dia em que o outro atleta tem treino forte, quan
 ${who==="pace"?faseBloco(numSemana(state.week)):""}
 ${KPI_SPEC}
 ${desempenhoIA(who)}
+${evolucaoIA(who)}
+${memoriaIA(who)}
 Biblioteca de treinos do treinador (prefira adaptar estes treinos):
 ${libForPrompt(who)}`;
+}
+/* ===== Ciclo de evolução: a cada semana a IA recebe o que aconteceu de verdade, tira conclusões
+   ("memória do treinador") e usa tudo isso para montar a semana seguinte ===== */
+const media=a=>a.length?sum(a)/a.length:0;
+/* resumo semana a semana (até 4 anteriores + a atual) do que foi planejado contra o que foi feito */
+function evolucaoIA(who){
+ try{
+  const ws=Object.entries(state.hist||{}).filter(([id,h])=>h&&h.plan&&Array.isArray(h.plan.dias)&&id<state.week.id).sort((a,b)=>a[0].localeCompare(b[0])).slice(-4);
+  ws.push([state.week.id,{nome:state.week.nome,plan:state.week,log:state.log,res:state.res}]);
+  const linhas=ws.map(([id,h])=>{
+   const lg=h.log||{},D=h.plan.dias,st=weekStats(h.plan,lg,h.res||{}),cg=cargaSemana(h.plan,lg,h.res||{},who);
+   const dif=[];Object.entries(lg.rpe||{}).forEach(([k,v])=>{const [d,w,s]=k.split(":");if(w!==who||!+v)return;const dia=D[+d];if(!dia)return;
+    const ses=s==="corrida"?dia.pace&&dia.pace.corrida:who==="power"?dia.power:dia.pace&&(dia.pace[(lg.opt||{})[d]||"a"]||dia.pace.a);if(ses&&+ses.rpe)dif.push(+v-+ses.rpe)});
+   const pr=Object.entries(lg.prontidao||{}).filter(([k])=>k.split(":")[1]===who).map(([,p])=>prontScore(p)).filter(Boolean);
+   const cargas=Object.entries(lg.cargas||{}).filter(([k])=>k.split(":")[1]===who).map(([,c])=>c&&c.ex?`${c.ex} ${num(c.kg)} kg × ${c.reps}`:"").filter(Boolean);
+   const ds=Object.entries(lg.dietStatus||{}).filter(([k,v])=>k.split(":")[1]===who&&v).map(([,v])=>v);
+   const obs=Object.entries(lg.dietObs||{}).filter(([k,v])=>k.split(":")[1]===who&&v).map(([,v])=>v).slice(0,3);
+   const dm=media(dif);
+   return `- ${h.nome||id}${id===state.week.id?" (semana atual, em andamento)":""}: treinos feitos ${pct(who==="power"?st.adPo:st.adPa)}; carga sRPE ${cg.total}; esforço real ${dif.length?`${dm>0?"+":""}${dm.toFixed(1)} em relação ao planejado (${dif.length} sessões)`:"não registrado"}; prontidão média ${pr.length?Math.round(media(pr)):"não registrada"}; `
+    +(who==="pace"?`corridas ${st.runsDone} de ${st.runs}, ${num(st.kmPa.toFixed(1))} km importados; `:`${num(st.kmPo.toFixed(1))} km importados; `)
+    +`sono 7h+ em ${who==="power"?st.sonoPo:st.sonoPa} dias; dieta ${ds.length?`${ds.filter(x=>x==="ok").length} dias seguida, ${ds.filter(x=>x==="partial").length} parcial, ${ds.filter(x=>x==="off").length} fora`:"sem registro"}${obs.length?` (obs.: ${obs.join(" / ")})`:""}; cargas do principal: ${cargas.join(", ")||"não registradas"}`;
+  });
+  return `EVOLUÇÃO do "${who}" (da semana mais antiga para a atual):\n${linhas.join("\n")}`;
+ }catch(e){return ""}
+}
+/* aprendizados guardados das semanas anteriores (o que funcionou, o que não funcionou) */
+function memoriaIA(who){
+ const l=((state.memoria||{})[who]||[]).slice(0,10);
+ return l.length?`MEMÓRIA DO TREINADOR para o "${who}" (aprendizados das semanas anteriores, do mais recente ao mais antigo; siga-os, e se os dados novos mostrarem outra coisa, corrija com um aprendizado novo):\n${l.map(x=>`- ${x.t} (${x.s})`).join("\n")}`
+  :`MEMÓRIA DO TREINADOR para o "${who}": ainda vazia (primeira semana com o ciclo de evolução).`;
+}
+/* antes de gerar: garante histórico e memória carregados e devolve a análise do treinador da semana (aba Resultados) */
+async function contextoEvolucao(soDe){
+ try{
+  if(!state.hist&&!state.histLoading)await loadHist();
+  if(!state.memoria){const m=await load("aprendizados/v2");state.memoria={power:(m&&m.power)||[],pace:(m&&m.pace)||[]}}
+  const an=await load("analises/v2-"+state.week.id);
+  return ["power","pace"].filter(w=>!soDe||w===soDe).map(w=>{const a=an&&an[w];
+   return a&&a.resumo?`ANÁLISE DO TREINADOR desta semana para o "${w}": ${a.resumo} A melhorar: ${(a.melhorar||[]).join("; ")||"-"}. Foco sugerido: ${(a.foco||[]).join("; ")||"-"}.`:""}).filter(Boolean).join("\n");
+ }catch(e){return ""}
+}
+/* regra do ciclo, pedida em toda geração */
+const CICLO_SPEC=`CICLO DE EVOLUÇÃO (obrigatório): antes de montar, compare o planejado com o realizado na EVOLUÇÃO e na MEMÓRIA DO TREINADOR. Esforço real acima do planejado, prontidão baixa ou treinos não feitos pedem segurar volume ou intensidade, ou trocar por exercícios que caibam melhor na rotina; esforço abaixo do planejado, boa adesão e cargas subindo permitem progredir. Repita o que funcionou e mude o que não funcionou.`;
+/* guarda os aprendizados novos (os mais recentes primeiro, até 12 por atleta) */
+function salvarAprendizados(apr,semana){
+ if(!apr||typeof apr!=="object")return;
+ state.memoria=state.memoria||{power:[],pace:[]};
+ const part={};
+ ["power","pace"].forEach(w=>{
+  const novos=(Array.isArray(apr[w])?apr[w]:[]).filter(x=>typeof x==="string"&&x.trim()).slice(0,4).map(t=>({t:t.trim().slice(0,300),s:semana||"",d:isoLocal(new Date())}));
+  if(!novos.length)return;
+  state.memoria[w]=[...novos,...(state.memoria[w]||[])].slice(0,12);part[w]=state.memoria[w];
+ });
+ if(Object.keys(part).length)mergeNow("aprendizados/v2",part,state.memoria);
+}
+/* mostra o "por que mudou" e os aprendizados na prévia da semana gerada */
+function aprendizadosHTML(ajustes,apr){
+ const l=["power","pace"].flatMap(w=>(Array.isArray(apr&&apr[w])?apr[w]:[]).filter(x=>typeof x==="string").map(t=>`<li><b style="color:var(--${w})">${esc(w==="power"?NP():NA())}:</b> ${esc(nm(t))}</li>`));
+ if(!ajustes&&!l.length)return "";
+ return `<div class="evolucao">${ajustes?`<p><b>Por que mudou:</b> ${esc(nm(ajustes))}</p>`:""}${l.length?`<p><b>O que a IA aprendeu com a semana:</b></p><ul>${l.join("")}</ul>`:""}</div>`;
+}
+/* memória do treinador na aba Nova semana, com opção de apagar um aprendizado */
+function memoriaHTML(){
+ const m=state.memoria||{},tot=(m.power||[]).length+(m.pace||[]).length;
+ return `<details class="bloco" ${keep("memoria")}><summary><span>Memória do treinador</span><b>${tot?`${tot} aprendizado${tot>1?"s":""}`:"vazia"}</b></summary><div class="memoria">
+  <p class="sub">O que a IA aprendeu com as semanas anteriores e usa para montar as próximas. Apague o que não fizer sentido.</p>
+  ${["power","pace"].map(w=>`<h4 style="color:var(--${w})">${esc(w==="power"?NP():NA())}</h4>${(m[w]||[]).length?`<ul>${m[w].map((x,i)=>`<li><span>${esc(nm(x.t))} <small>${esc(x.s||"")}</small></span><button class="link" data-act="apr-del" data-who="${w}" data-i="${i}" aria-label="Apagar este aprendizado">apagar</button></li>`).join("")}</ul>`:`<p class="sub">Nada ainda. Aparece depois da primeira semana gerada.</p>`}`).join("")}
+ </div></details>`;
 }
 /* desempenho registrado (esforço, prontidão e cargas) para a IA progredir as cargas com base no realizado */
 function desempenhoIA(who){
@@ -2082,7 +2161,10 @@ async function iaComKPI(prompt,signal,checar,avisar){
 const avisoFora=f=>f.length?` Atenção: ${f.length} ${f.length>1?"sessões ficaram":"sessão ficou"} fora da faixa de tempo (${f.join("; ")}). Dá para ajustar com "Refazer com IA" no dia.`:"";
 async function gerarParte(who){
  const btn=GEN_BTN,stop=GEN_STOP,st=GEN_ST;
- const pedido=(document.getElementById("ajustes").value||"").trim();
+ const pedido=((document.getElementById("ajustes")||{}).value||"").trim();
+ /* ciclo de evolução: histórico, memória do treinador e análise da semana deste atleta */
+ if(state.gen.prep)return;state.gen.prep=true;st.textContent="Lendo o histórico das últimas semanas…";
+ let analiseAnterior="";try{analiseAnterior=await contextoEvolucao(who)}finally{state.gen.prep=false}
  const forma=who==="power"?'{"power":Sessao}':'{"a":Sessao,"b":Sessao}';
  const prompt=`${promptBase(who)}
 
@@ -2092,7 +2174,10 @@ Pedido do atleta: ${pedido||"variar os treinos mantendo os mesmos objetivos"}
 Semana atual (JSON):
 ${JSON.stringify(contextoParte(who))}
 
-Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
+${analiseAnterior}
+${CICLO_SPEC}
+
+Responda APENAS com JSON: {"ajustes":"1 a 3 frases dizendo o que mudou por causa dos dados da EVOLUÇÃO e da MEMÓRIA","aprendizados":["2 a 4 aprendizados curtos e específicos, com números, sobre o que funcionou ou não para este atleta"],"dias":[7 itens, segunda a domingo]}, cada item de "dias" no formato ${forma}. ${SESSAO_SPEC}. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
  btn.disabled=true;stop.hidden=false;st.textContent=`Refazendo os treinos ${doDa(who)}. Pode levar um ou dois minutos…`;ctl=new AbortController();
  const checar=r=>{
   if(!r||!Array.isArray(r.dias))throw {code:"formato"};
@@ -2104,7 +2189,7 @@ Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no fo
  try{
   const {out:r,fora}=await iaComKPI(prompt,ctl.signal,checar,n=>{st.textContent=`Ajustando o tempo real de ${n} ${n>1?"sessões":"sessão"} (segunda passada)…`});
   r.dias.forEach(x=>[x.power,x.a,x.b].forEach(s=>s&&fixMin(s)));
-  state.partDraft={who,dias:r.dias,weekId:state.week.id};
+  state.partDraft={who,dias:r.dias,weekId:state.week.id,ajustes:typeof r.ajustes==="string"?r.ajustes:"",aprendizados:Array.isArray(r.aprendizados)?r.aprendizados:[]};
   st.textContent=`Pronto. Só os treinos ${doDa(who)} mudam. Confira e confirme.${avisoFora(fora)}`;
   {const pv=document.getElementById("prev");if(pv)pv.innerHTML=partPrevHTML(state.partDraft)}
  }catch(e){
@@ -2114,7 +2199,7 @@ Responda APENAS com JSON: {"dias":[7 itens, segunda a domingo]}, cada item no fo
 }
 function partPrevHTML(p){
  const D=state.week.dias,po=p.who==="power";
- return `<div class="panel" style="margin-top:16px"><h3>Novos treinos ${esc(doDa(p.who))}</h3><p class="sub">${esc(state.week.nome)}. Os treinos ${esc(doDa(po?"pace":"power"))} e todas as marcações continuam iguais.</p>
+ return `<div class="panel" style="margin-top:16px"><h3>Novos treinos ${esc(doDa(p.who))}</h3><p class="sub">${esc(state.week.nome)}. Os treinos ${esc(doDa(po?"pace":"power"))} e todas as marcações continuam iguais.</p>${aprendizadosHTML(p.ajustes,{[p.who]:p.aprendizados})}
  ${p.dias.map((x,i)=>{const antes=po?D[i].power.titulo:`${D[i].pace.a.titulo} / ${D[i].pace.b.titulo}`,depois=po?x.power.titulo:`${x.a.titulo} / ${x.b.titulo}`;
   return `<div class="row"><b>${AB[i]}</b><span style="text-align:right"><span style="color:var(--muted);text-decoration:line-through">${esc(nm(antes))}</span><br><span style="color:var(--${p.who})">${esc(nm(depois))}</span></span></div>`}).join("")}
  <div class="actions"><button class="btn" data-act="usar-parte">Usar estes treinos</button><button class="btn ghost" data-act="desc-parte">Descartar</button></div></div>`;
@@ -2122,6 +2207,7 @@ function partPrevHTML(p){
 function usarParte(){
  const p=state.partDraft;if(!p)return;
  if(p.weekId!==state.week.id){state.partDraft=null;return}
+ salvarAprendizados({[p.who]:p.aprendizados},state.week.nome);
  p.dias.forEach((x,i)=>{const d=state.week.dias[i];if(p.who==="power")d.power=x.power;else{d.pace.a=x.a;d.pace.b=x.b}});
  const slotsP=p.who==="power"?p.dias.map((_,i)=>[i,"power"]):p.dias.flatMap((_,i)=>[[i,"a"],[i,"b"]]);
  state.partDraft=null;savePlanSlots(slotsP);state.tab="dia";render();scrollTo(0,0);
@@ -2179,6 +2265,10 @@ async function gerar(){
  const btn=GEN_BTN,stop=GEN_STOP,st=GEN_ST;
  const n=(parseInt((state.week.nome||"").replace(/\D/g,""))||1)+1;
  const runs=[...document.querySelectorAll("[data-run]")].map((t,i)=>t.value.trim()?`${DIAS[i]}: ${t.value.trim()}`:null).filter(Boolean);
+ const ajustesTxt=((document.getElementById("ajustes")||{}).value||"").trim();
+ /* ciclo de evolução: histórico das últimas semanas, memória do treinador e análise da semana */
+ if(state.gen.prep)return;state.gen.prep=true;st.textContent="Lendo o histórico das últimas semanas…";
+ let analiseAnterior="";try{analiseAnterior=await contextoEvolucao()}finally{state.gen.prep=false}
  const prompt=`Você é treinador chefe de alta performance, especialista em periodização híbrida com a metodologia HWPO (Hard Work Pays Off). Programe a semana de dois atletas, de segunda a domingo, com o domingo regenerativo. Use os marcadores {power} e {pace} quando precisar citar os atletas no texto, nunca nomes.
 
 ${PERFIL.power} No sábado, o power pode acompanhar o longão do {pace} em Z1–Z2.
@@ -2197,12 +2287,18 @@ ${JSON.stringify(resumoSemana(state.week))}
 Registro da semana atual: ${resumo()}
 ${desempenhoIA("power")}
 ${desempenhoIA("pace")}
+${evolucaoIA("power")}
+${evolucaoIA("pace")}
+${memoriaIA("power")}
+${memoriaIA("pace")}
+${analiseAnterior}
+${CICLO_SPEC}
 Resultados importados (realizado): ${["pace","power"].map(w=>state.week.dias.map((_,i)=>acts(w,i).map(a=>`${w} ${DIAS[i]}: ${a.titulo||a.tipo} ${a.km||0} km ${a.tempo||""} pace ${a.pace||"-"} FC ${a.fc||"-"}`).join("; ")).filter(Boolean).join("; ")).filter(Boolean).join("; ")||"nenhum"}
 Biblioteca de treinos do treinador (prefira usar e adaptar estes treinos, mantendo os exercícios e ajustando cargas e volume; se usar um, copie os blocos dele):
 ${libForPrompt()}
-Ajustes pedidos: ${document.getElementById("ajustes").value.trim()||"nenhum"}
+Ajustes pedidos: ${ajustesTxt||"nenhum"}
 
-Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Semana ${n}","fase":"...","foco":"...","dias":[7 itens, segunda a domingo]}. Cada dia: {"nota":"texto curto ou vazio","power":Sessao,"pace":{"corrida":Corrida ou null,"a":Sessao,"b":Sessao}}. ${SESSAO_SPEC}. Corrida: {"titulo","desc":"1 frase sobre o objetivo","km":número,"min":número estimado,"rpe":1-10,"zonas":[5 números de minutos],"passos":[textos curtos com a zona, sem paces],"obs"}. Todo exercício de musculação, funcional ou estação deve ter "d". Transcreva as corridas da planilha fielmente nos passos. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
+Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Semana ${n}","fase":"...","foco":"...","ajustes":"1 a 3 frases dizendo o que mudou nesta semana por causa dos dados da EVOLUÇÃO e da MEMÓRIA","aprendizados":{"power":["2 a 4 aprendizados curtos e específicos, com números, sobre o que funcionou ou não para o power"],"pace":["2 a 4 aprendizados curtos e específicos, com números, sobre o que funcionou ou não para o pace"]},"dias":[7 itens, segunda a domingo]}. Cada dia: {"nota":"texto curto ou vazio","power":Sessao,"pace":{"corrida":Corrida ou null,"a":Sessao,"b":Sessao}}. ${SESSAO_SPEC}. Corrida: {"titulo","desc":"1 frase sobre o objetivo","km":número,"min":número estimado,"rpe":1-10,"zonas":[5 números de minutos],"passos":[textos curtos com a zona, sem paces],"obs"}. Todo exercício de musculação, funcional ou estação deve ter "d". Transcreva as corridas da planilha fielmente nos passos. Escreva em português do Brasil e cite zonas como Z1, Z2 etc.`;
  btn.disabled=true;stop.hidden=false;st.textContent="Montando a semana com o Gemini. Pode levar um ou dois minutos…";ctl=new AbortController();
  const checar=w=>{
   if(!valid(w))throw {code:"formato"};
@@ -2231,6 +2327,8 @@ Responda APENAS com um objeto JSON: {"id":"${nextId(state.week.id)}","nome":"Sem
 async function usar(){
  /* toque duplo no botão: a segunda vez não acha mais rascunho e para aqui (antes travava o app) */
  const draft=state.draft;if(!draft)return;state.draft=null;state.gen.msg="";
+ /* guarda o que a IA aprendeu com a semana que terminou, para usar nas próximas */
+ salvarAprendizados(draft.aprendizados,draft.nome);
  if(state.week.id===state.currentId)save("semanas/v2-"+state.week.id,state.week);
  const prevWeek=state.week;
  state.week=draft;state.currentId=state.week.id;state.hist=null;
@@ -2565,6 +2663,7 @@ view.addEventListener("click",e=>{
   state.dietObsDraft=null;
   dietSaved(k,saveLog({dietObs:{[k]:state.log.dietObs[k]}}));return;
  }
+ if(act==="apr-del"){const w=t.dataset.who,l=(state.memoria||{})[w];if(!l)return;l.splice(+t.dataset.i,1);mergeNow("aprendizados/v2",{[w]:l},state.memoria);render();return}
  if(act==="hist-reload"){state.hist=null;render();return}
  if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace",true);
  if(act==="imp-dieta")return pick("dieta",".pdf,.docx,.txt,image/*");
@@ -2722,6 +2821,8 @@ async function initCloud(){
  window.fb.watch(P_WEEKS,(wl)=>{if(wl&&Array.isArray(wl.list)){state.weeks=wl.list;renderRemoto()}});
  window.fb.watch("dieta/v2",(d)=>{applyDiet(d);lsSet("dieta/v2",d);renderRemoto()});
  window.fb.watch("dieta-ewerton/v2",(d)=>{applyDietPo(d);lsSet("dieta-ewerton/v2",d);renderRemoto()});
+ /* memória do treinador: aprendizados que a IA usa para evoluir os treinos semana a semana */
+ window.fb.watch("aprendizados/v2",(m)=>{state.memoria={power:(m&&m.power)||[],pace:(m&&m.pace)||[]};lsSet("aprendizados/v2",state.memoria);if(state.tab==="nova")renderRemoto()});
  bindWeekWatchers();
  render();
 }
