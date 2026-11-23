@@ -541,7 +541,7 @@ body.sheet-aberto{overflow:hidden}
 <!-- Conexão com o Firebase (Projeto: power-e-pace) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { initializeAuth, browserLocalPersistence, indexedDBLocalPersistence, browserPopupRedirectResolver, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -558,11 +558,21 @@ window.dbReady = new Promise(async (resolve) => {
     const projectId = "power-e-pace";
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const auth = getAuth(app);
-    /* login: quem já entrou com Google neste aparelho continua conectado (o Firebase guarda o login).
-       Sem login Google, entra como anônimo, como antes, até as regras do banco exigirem a conta Google. */
+    /* login guardado no aparelho de forma duradoura: primeiro no armazenamento local do navegador
+       (o que o iPhone e o app da tela inicial mais preservam), com o IndexedDB como reserva.
+       Quem já tinha o login guardado só no IndexedDB é trazido para o local sem precisar entrar de novo. */
+    const auth = initializeAuth(app, {
+      persistence: [browserLocalPersistence, indexedDBLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver
+    });
+    /* pede ao navegador para não apagar os dados do app quando faltar espaço (Android/Chrome atendem) */
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
     try { await getRedirectResult(auth); } catch (e) { console.warn("Login Google:", e); }
     await new Promise((ok) => { const off = onAuthStateChanged(auth, () => { off(); ok(); }); });
+    /* lembra qual conta Google entrou aqui: se um dia o login sumir, o botão já volta nela com um toque */
+    const lembrar = () => { const u = auth.currentUser; try { if (u && !u.isAnonymous && u.email) localStorage.setItem("pp2:conta", u.email); } catch (e) {} };
+    lembrar();
+    onAuthStateChanged(auth, lembrar);
     if (!auth.currentUser) await signInAnonymously(auth);
 
     const refOf = (path) => {
@@ -622,7 +632,9 @@ window.dbReady = new Promise(async (resolve) => {
       async token() { return auth.currentUser ? auth.currentUser.getIdToken() : ""; },
       async entrarGoogle() {
         const p = new GoogleAuthProvider();
-        p.setCustomParameters({ prompt: "select_account" });
+        /* com a conta já conhecida neste aparelho, o Google entra direto nela; senão mostra a lista de contas */
+        let conta = ""; try { conta = localStorage.getItem("pp2:conta") || ""; } catch (e) {}
+        p.setCustomParameters(conta ? { login_hint: conta } : { prompt: "select_account" });
         try { await signInWithPopup(auth, p); }
         catch (e) {
           /* app instalado na tela inicial às vezes bloqueia a janela: usa o redirecionamento */
@@ -630,7 +642,9 @@ window.dbReady = new Promise(async (resolve) => {
           throw e;
         }
       },
-      async sair() { await signOut(auth); await signInAnonymously(auth); },
+      /* sair de propósito esquece a conta, para o próximo login mostrar a lista de contas */
+      async sair() { try { localStorage.removeItem("pp2:conta"); } catch (e) {} await signOut(auth); await signInAnonymously(auth); },
+      contaConhecida() { try { return localStorage.getItem("pp2:conta") || ""; } catch (e) { return ""; } },
       /* altera só os treinos indicados da semana, lendo a versão mais nova da nuvem antes de gravar:
          assim o que o outro aparelho mudou em outros dias ou no outro atleta não se perde */
       async patchPlan(path, muda, base) {
@@ -1102,13 +1116,13 @@ function renderSheet(){
     <button class="sheet-item" data-sheet="eu"><b>Quem está usando</b><span>${esc(state.eu==="power"?NP():state.eu==="pace"?NA():state.eu==="ambos"?"Os dois":"Não escolhido")} · trocar</span></button>
     <button class="sheet-item" data-sheet="conta"><b>Conta</b><span>${(()=>{const u=window.fb&&window.fb.user&&window.fb.user();return u&&!u.anonimo?esc(u.email||u.nome):"Entrar com Google para proteger os dados"})()}</span></button>`;
  if(s==="conta"){
-  const u=window.fb&&window.fb.user&&window.fb.user(),google=u&&!u.anonimo;
+  const u=window.fb&&window.fb.user&&window.fb.user(),google=u&&!u.anonimo,conhecida=!google&&window.fb&&window.fb.contaConhecida?window.fb.contaConhecida():"";
   el.innerHTML=`<div class="sheet-fundo" data-fechar-sheet></div><div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-alca" aria-hidden="true"></div>
    <h3>Conta</h3>
    ${google?`<p class="sub">Conectado como <b>${esc(u.email||u.nome)}</b>. Os dados ficam protegidos e só as contas liberadas nas regras do Firebase acessam.</p>
      <button class="btn ghost sheet-fechar" data-sair>Sair desta conta</button>`
     :`<p class="sub">Entre com a sua conta Google. Assim só vocês dois conseguem ver e alterar os treinos, a dieta e os resultados.</p>
-     <button class="btn sheet-fechar" data-login>Entrar com Google</button>`}
+     <button class="btn sheet-fechar" data-login>${conhecida?`Continuar como ${esc(conhecida)}`:"Entrar com Google"}</button>`}
    ${state.loginErr?`<p class="sub" style="color:var(--z5);margin-top:10px">${esc(state.loginErr)}</p>`:""}
    <button class="btn ghost sheet-fechar" data-fechar-sheet>${google?"Fechar":"Agora não"}</button></div>`;
   return;
