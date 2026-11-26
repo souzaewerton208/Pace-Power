@@ -82,8 +82,11 @@ module.exports = async (req, res) => {
       const lista = (Array.isArray(b.treinos) ? b.treinos : []).filter((t) => t && DATA.test(t.data || "")).slice(0, 30);
       if (!lista.length) return res.status(400).json({ error: "Nenhum treino para enviar" });
       const datas = lista.map((t) => t.data).sort();
-      // tira o que o app já tinha mandado nesses dias (assim reenviar não duplica)
-      const ev = await api(c, "GET", `/events?oldest=${datas[0]}&newest=${datas[datas.length - 1]}`);
+      // tira o que o app já tinha mandado nesses dias (assim reenviar não duplica);
+      // "de" e "ate" cobrem a semana toda, inclusive dias que ficaram sem treino no envio novo
+      const de = DATA.test(b.de || "") && b.de < datas[0] ? b.de : datas[0];
+      const ate = DATA.test(b.ate || "") && b.ate > datas[datas.length - 1] ? b.ate : datas[datas.length - 1];
+      const ev = await api(c, "GET", `/events?oldest=${de}&newest=${ate}`);
       const velhos = (Array.isArray(ev) ? ev : [])
         .filter((e) => e && e.category === "WORKOUT" && (String(e.external_id || "").startsWith("pp-") || String(e.description || "").startsWith(MARCA)))
         .map((e) => ({ id: e.id }));

@@ -2801,7 +2801,7 @@ const textoSessao=s=>[s.desc?nm(s.desc):"",...(s.blocos||[]).map(b=>{const md=mo
 function garminSemanaHTML(){
  const alvos=quemsEu().filter(w=>state.ivl.on[w]);if(!alvos.length)return "";
  const I=state.ivl;
- return `<div class="panel" style="margin-top:18px"><h3>Relógio</h3><p class="sub">Manda os treinos de hoje até domingo para o calendário do intervals.icu${alvos.length>1?" dos dois":""}. Com o envio ao Garmin ligado lá, eles aparecem no relógio. As corridas vão com os passos e o pace de cada trecho.</p>
+ return `<div class="panel" style="margin-top:18px"><h3>Relógio</h3><p class="sub">Manda os treinos de hoje até domingo para o calendário do intervals.icu${alvos.length>1?" dos dois":""}. Com o envio ao Garmin ligado lá, eles aparecem no relógio. Vão só os treinos de força e complemento: as corridas da planilha já chegam pelo app da assessoria.</p>
   <div class="actions"><button class="btn sm" data-act="ivl-enviar" ${I.envBusy?"disabled":""}>${I.envBusy?"Enviando…":"Enviar semana ao relógio"}</button><button class="btn sm ghost" data-act="ivl-sync">Buscar treinos feitos</button></div>
   <div class="upl" id="upl-env"></div><div class="upl" id="upl-res"></div></div>`;
 }
@@ -2814,32 +2814,15 @@ async function enviarGarmin(){
  try{
   const out=[];
   for(const w of alvos){
-   const lista=[],runs=[];
+   /* só os treinos do Pace & Power (força e complemento). As corridas da planilha da Joanna já chegam ao relógio pelo app da assessoria. */
+   const lista=[];
    state.week.dias.forEach((day,i)=>{if(i<ini)return;const data=addDias(state.week.id,i);
     const s=w==="power"?day.power:(day.pace[opt(i)]||day.pace.a);
     if(!descanso(s))lista.push({data,slot:"t",nome:nm(s.titulo),tipo:w==="power"&&/corrida|rodagem|\brun\b/i.test(s.tipo||"")&&!(s.blocos||[]).length?"Run":"WeightTraining",min:+s.min||0,texto:textoSessao(s)});
-    const r=w==="pace"&&day.pace.corrida;if(r)runs.push({data,nome:r.titulo,min:+r.min||0,km:+r.km||0,passos:r.passos||[]});
    });
-   if(runs.length){
-    say(id,`Montando as corridas ${doDa(w)} para o relógio…`);
-    const conv={};
-    try{
-     const zonas=ZN.map((z,k)=>`${z}: ${state.cfg.paces[k]||"sem pace definido"}`).join("; ");
-     const r=await geminiJson(`Converta cada corrida abaixo para o texto de treino estruturado do intervals.icu, que vai para o relógio Garmin. Regras do formato:
-- Cada passo é uma linha que começa com "- ": um nome curto opcional, a duração ou a distância e o alvo. Duração: 10m, 45s, 1m30s. Distância: 1km, 2.5km, 400mtr (metros usam "mtr").
-- Alvo de pace: faixa absoluta por km, do mais rápido ao mais lento, terminando com " Pace". Exemplo: "- Aquecimento 10m 6:15-6:28/km Pace".
-- Paces por zona desta atleta (min/km): ${zonas}. Use a faixa da zona pedida em cada trecho; sem zona indicada, use Z2.
-- Repetições: uma linha só com "5x" e, logo abaixo, os passos que se repetem (tiro e recuperação). Deixe uma linha em branco antes e depois de cada repetição.
-- Separe aquecimento, parte principal e desaquecimento com linhas em branco. Não escreva nenhuma outra linha além dos passos e das linhas "Nx".
-- Siga a planilha à risca: não invente trechos, volumes ou paces.
-Responda APENAS JSON: {"corridas":[{"data":"AAAA-MM-DD","texto":"..."}]}
-Corridas: ${JSON.stringify(runs.map(x=>({data:x.data,titulo:x.nome,km:x.km,min:x.min,passos:x.passos})))}`,null,null,"LOW");
-     ((r&&r.corridas)||[]).forEach(c=>{if(c&&typeof c.texto==="string"&&/^\s*-\s/m.test(c.texto))conv[c.data]=c.texto.trim()});
-    }catch(e){}
-    runs.forEach(x=>lista.push({data:x.data,slot:"c",nome:x.nome,tipo:"Run",min:x.min,texto:conv[x.data]||x.passos.join("\n")}));
-   }
    if(!lista.length)continue;
-   const j=await ivl({acao:"enviar",who:w,treinos:lista});
+   /* de/ate: o servidor troca tudo o que o app já tinha mandado nesses dias (inclusive corridas de envios antigos) */
+   const j=await ivl({acao:"enviar",who:w,treinos:lista,de:addDias(state.week.id,ini),ate:addDias(state.week.id,6)});
    out.push(`${quem(w)}: ${j.enviados} treino${j.enviados!==1?"s":""}`);
   }
   I.env={t:Date.now()};
