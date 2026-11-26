@@ -930,6 +930,8 @@ const state={
  diet:{data:"06/11/2026",kcal:1647},
  dietWho:"pace",
  eu:null,verDia:"ambos",open:{},sheet:null,
+ /* Garmin pelo intervals.icu: quem tem conta ligada, bem-estar (forma, HRV, sono) e envio da semana */
+ ivl:{on:{power:false,pace:false},bem:{},busy:{},aviso:{},env:{}},
  res:{pace:{},power:{}},
  lib:[],
  libFilter:"Todos",
@@ -1484,7 +1486,8 @@ function vSemana(v){
   <td><div class="tt">${esc(nm(x.power.titulo))}</div><div class="mt">${esc(x.power.tipo)}, ${+x.power.min||0} min, esforço ${+x.power.rpe||0}${+x.power.km?`, ${num(x.power.km)} km`:""}${isC(i+":power:treino")?' <b style="color:var(--ok)">feito</b>':""}</div>${mb(x.power.zonas)}</td>
   <td>${p.corrida?`<div class="run-line">Corrida: ${esc(p.corrida.titulo)}, ${num(p.corrida.km)} km${isC(i+":pace:corrida")?' <b style="color:var(--ok)">feita</b>':""}</div>`:""}<div class="tt">${esc(nm(p.a.titulo))} <span class="mt">ou</span> ${esc(nm(p.b.titulo))}</div><div class="mt">${+o.min||0} min na opção escolhida${isC(i+":pace:treino")?' <b style="color:var(--ok)">feito</b>':""}</div>${mb(p.corrida?p.corrida.zonas:o.zonas)}</td></tr>`}).join("")}
  </tbody></table></div>
- <div class="legend">${ZN.map((z,i)=>`<span><i style="background:${zc(i)}"></i>${esc(ZD[i])}</span>`).join("")}</div>`;
+ <div class="legend">${ZN.map((z,i)=>`<span><i style="background:${zc(i)}"></i>${esc(ZD[i])}</span>`).join("")}</div>
+ ${garminSemanaHTML()}`;
 }
 
 function chart(series,unit,labels){
@@ -1520,11 +1523,12 @@ function vPainel(v){
  const rkPa=D.map((_,i)=>sum(acts("pace",i).filter(a=>a.run).map(a=>a.km)));
  const all=["pace","power"].flatMap(w=>D.flatMap((_,i)=>acts(w,i).map(a=>({...a,w,i}))));
  v.innerHTML=`<div class="tool"><div><h2 class="sec">Painel</h2><p class="lead">Volume e intensidade planejados, resultados importados e o que já foi marcado nos checklists.</p></div>
-  <div class="btns"><button class="btn sm" data-act="imp-res" data-who="${euOuPace()}">Importar resultado</button></div></div>
+  <div class="btns">${ivlOnEu()?`<button class="btn sm" data-act="ivl-sync">Buscar do Garmin</button>`:""}<button class="btn sm${ivlOnEu()?" ghost":""}" data-act="imp-res" data-who="${euOuPace()}">Importar resultado</button></div></div>
  <div class="upl" id="upl-res"></div>${resDraftHTML()}
  <div class="grid">
   <div class="panel wide"><div class="tool" style="margin:0 0 10px"><div><h3 style="margin:0">Avaliação da semana</h3><p class="sub" style="margin:2px 0 0">Como está o aproveitamento até agora. Toque em cada item para ver o detalhe.</p></div><button class="btn sm ghost" data-tab-go="resultados">Histórico e análise do treinador</button></div>
    <div class="aval-grid">${["pace","power"].map(w=>avalSemanaHTML(state.week,state.log,state.res,w)).join("")}</div></div>
+  ${formaHTML()}
   <div class="panel wide"><h3>Resultados da semana</h3><p class="sub">Atividades importadas do Garmin ou de outro app (CSV, PDF, foto ou print). Cada uma é ligada ao dia certo pela data.</p>
    ${all.length?all.map(a=>`<div class="row"><span><b>${AB[a.i]}</b> <span class="who-tag ${a.w}">${esc(quem(a.w))}</span> ${esc(a.titulo||a.tipo||"Atividade")}</span><span>${+a.km?num((+a.km).toFixed(2))+" km":""}${a.tempo?" em "+esc(a.tempo):""}${a.pace?", pace "+esc(a.pace):""}${a.fc?", FC "+esc(a.fc):""}</span></div>`).join(""):`<p class="sub" style="margin:0">Nenhum resultado importado nesta semana ainda.</p>`}</div>
   <div class="panel"><h3>Corrida</h3><p class="sub">Km por dia. ${esc(NA())}: ${num(sum(kmPa).toFixed(1))} km planejados, ${num(sum(rkPa).toFixed(1))} km realizados. ${esc(NP())}: ${num(sum(kmPo).toFixed(1))} km planejados.</p>${chart([{name:NA()+" planejado",color:"var(--pace)",values:kmPa},{name:NA()+" realizado",color:"var(--ok)",values:rkPa},{name:NP()+" planejado",color:"var(--power)",values:kmPo}],"km")}</div>
@@ -2094,7 +2098,7 @@ const media=a=>a.length?sum(a)/a.length:0;
 function evolucaoIA(who){
  try{
   const ws=Object.entries(state.hist||{}).filter(([id,h])=>h&&h.plan&&Array.isArray(h.plan.dias)&&id<state.week.id).sort((a,b)=>a[0].localeCompare(b[0])).slice(-4);
-  ws.push([state.week.id,{nome:state.week.nome,plan:state.week,log:state.log,res:state.res}]);
+  if(!ws.some(([id])=>id===state.week.id))ws.push([state.week.id,{nome:state.week.nome,plan:state.week,log:state.log,res:state.res}]);
   const linhas=ws.map(([id,h])=>{
    const lg=h.log||{},D=h.plan.dias,st=weekStats(h.plan,lg,h.res||{}),cg=cargaSemana(h.plan,lg,h.res||{},who);
    const dif=[];Object.entries(lg.rpe||{}).forEach(([k,v])=>{const [d,w,s]=k.split(":");if(w!==who||!+v)return;const dia=D[+d];if(!dia)return;
@@ -2108,7 +2112,8 @@ function evolucaoIA(who){
     +(who==="pace"?`corridas ${st.runsDone} de ${st.runs}, ${num(st.kmPa.toFixed(1))} km importados; `:`${num(st.kmPo.toFixed(1))} km importados; `)
     +`sono 7h+ em ${who==="power"?st.sonoPo:st.sonoPa} dias; dieta ${ds.length?`${ds.filter(x=>x==="ok").length} dias seguida, ${ds.filter(x=>x==="partial").length} parcial, ${ds.filter(x=>x==="off").length} fora`:"sem registro"}${obs.length?` (obs.: ${obs.join(" / ")})`:""}; cargas do principal: ${cargas.join(", ")||"não registradas"}`;
   });
-  return `EVOLUÇÃO do "${who}" (da semana mais antiga para a atual):\n${linhas.join("\n")}`;
+  const rel=relogioIA(who);
+  return `EVOLUÇÃO do "${who}" (da semana mais antiga para a atual):\n${linhas.join("\n")}${rel?"\n"+rel:""}`;
  }catch(e){return ""}
 }
 /* aprendizados guardados das semanas anteriores (o que funcionou, o que não funcionou) */
@@ -2122,6 +2127,8 @@ async function contextoEvolucao(soDe){
  try{
   if(!state.hist&&!state.histLoading)await loadHist();
   if(!state.memoria){const m=await load("aprendizados/v2");state.memoria={power:(m&&m.power)||[],pace:(m&&m.pace)||[]}}
+  /* dados do relógio (forma, fadiga, HRV, sono) entram na evolução quando o intervals.icu está ligado */
+  await Promise.all(["power","pace"].filter(w=>(!soDe||w===soDe)&&state.ivl.on[w]&&!(state.ivl.bem[w]||[]).length).map(w=>syncGarmin(w,false).catch(()=>{})));
   const an=await load("analises/v2-"+state.week.id);
   return ["power","pace"].filter(w=>!soDe||w===soDe).map(w=>{const a=an&&an[w];
    return a&&a.resumo?`ANÁLISE DO TREINADOR desta semana para o "${w}": ${a.resumo} A melhorar: ${(a.melhorar||[]).join("; ")||"-"}. Foco sugerido: ${(a.foco||[]).join("; ")||"-"}.`:""}).filter(Boolean).join("\n");
@@ -2524,7 +2531,7 @@ async function salvarRes(){
    cur[who]=cur[who]||{};
    const dias={};
    arr.forEach(a=>{const d=(new Date(a.data+"T12:00:00").getDay()+6)%7;const l=cur[who][d]=cur[who][d]||[];
-    if(l.some(x=>resKey(x)===resKey(a)))return;l.push(a);dias[d]=l;
+    if(l.some(x=>mesmaAtiv(x,a)))return;l.push(a);dias[d]=l;
     if(wk===state.week.id){nCur++;const day=state.week.dias[d];
      const k=who==="pace"?(a.run&&day.pace.corrida?d+":pace:corrida":d+":pace:treino"):d+":power:treino";
      state.log.chk[k]=true;chg[k]=true}});
@@ -2540,6 +2547,147 @@ async function salvarRes(){
   const oks=await Promise.all(saves);
   say(id,`Em nome ${doDa(who)}: `+resumo+(oks.every(Boolean)?" Salvo ✓":" Salvo só neste aparelho: sem conexão com a nuvem."));
  }catch(e){say(id,ERR(e))}
+}
+
+/* ===== Garmin pelo intervals.icu =====
+   O servidor (api/intervals.js) guarda as chaves; aqui o app pede os treinos feitos e o bem-estar
+   (forma, fadiga, HRV, sono) e manda a semana planejada para o calendário que vai ao relógio. */
+async function ivl(corpo){
+ const tk=window.fb&&window.fb.token?await window.fb.token():"";
+ const r=await fetch("/api/intervals",{method:corpo?"POST":"GET",headers:{"Content-Type":"application/json",...(tk?{Authorization:"Bearer "+tk}:{})},body:corpo?JSON.stringify(corpo):undefined});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw {code:j.code||(r.status===401?"login":"ivl"),msg:j.error||("erro "+r.status)};
+ return j;
+}
+const ivlErr=e=>e&&e.code==="sem_conta"?"A conta do intervals.icu deste atleta ainda não está ligada na Vercel.":e&&e.code==="chave"?"O intervals.icu recusou a chave. Confira a variável na Vercel (formato i123456:CHAVE).":e&&e.code==="login"?IA_LOGIN:`Não foi possível falar com o intervals.icu agora${e&&e.msg?` (${e.msg})`:""}.`;
+const quemsEu=()=>state.eu==="power"||state.eu==="pace"?[state.eu]:["power","pace"];
+const ivlOnEu=()=>quemsEu().some(w=>state.ivl.on[w]);
+const TIPO_PT={Run:"Corrida",VirtualRun:"Corrida na esteira",TrailRun:"Trilha",WeightTraining:"Musculação",Workout:"Treino",Walk:"Caminhada",Hike:"Caminhada",Ride:"Bike",VirtualRide:"Bike indoor",Swim:"Natação",Rowing:"Remo",Crossfit:"Crossfit",HighIntensityIntervalTraining:"HIIT",Elliptical:"Elíptico",Yoga:"Yoga"};
+function ativDoGarmin(a){
+ const run=/Run/.test(a.tipo),km=a.m?Math.round(a.m/10)/100:0;
+ return {data:a.data,tipo:TIPO_PT[a.tipo]||a.tipo,titulo:a.titulo||"",km,tempo:a.seg?hms(a.seg):"",pace:run&&km&&a.seg?hms(a.seg/km):"",fc:a.fc?String(Math.round(a.fc)):"",run,fonte:"Garmin",ivl:a.id,...(a.carga?{carga:Math.round(a.carga)}:{})};
+}
+/* a mesma atividade vinda por caminhos diferentes (print e Garmin) conta uma vez só */
+function mesmaAtiv(x,a){
+ if(!x||!a)return false;
+ if(x.ivl&&a.ivl)return x.ivl===a.ivl;
+ if(resKey(x)===resKey(a))return true;
+ if(x.data!==a.data)return false;
+ const sx=secOf(x.tempo),sa=secOf(a.tempo),ds=Math.abs(sx-sa);
+ if(+x.km||+a.km)return Math.abs((+x.km||0)-(+a.km||0))<0.06&&(!sx||!sa||ds<90);
+ return !!sx&&!!sa&&ds<90;
+}
+/* busca no Garmin: bem-estar das últimas 6 semanas e os treinos feitos (manual: desde a semana passada) */
+async function syncGarmin(who,manual){
+ const I=state.ivl,id="upl-res";if(I.busy[who])return;I.busy[who]=true;
+ if(manual)say(id,`Buscando os treinos ${doDa(who)} no Garmin…`);
+ try{
+  const hoje=isoLocal(new Date()),de=new Date();de.setDate(de.getDate()-41);
+  const r=await ivl({acao:"ler",who,oldest:isoLocal(de),newest:hoje});
+  I.bem[who]=(r.bemestar||[]).sort((a,b)=>a.data.localeCompare(b.data));lsSet("ivl-bem-"+who,{t:Date.now(),bem:I.bem[who]});
+  const sem=state.currentId||state.week.id,desde=manual?addDias(sem,-7):sem;
+  const ats=(r.atividades||[]).filter(a=>a.data>=desde&&a.data<=hoje).map(ativDoGarmin);
+  const ja=Object.values(state.res[who]||{}).flat();
+  const novas=ats.filter(a=>!(mondayOf(a.data)===state.week.id&&ja.some(x=>mesmaAtiv(x,a))));
+  I.aviso[who]=!ats.length&&r.vazias?"O Garmin não repassou os treinos pelo intervals.icu. Continue importando por print.":"";
+  if(novas.length&&!state.resDraft){state.resDraft={list:novas,who};await salvarRes()}
+  else{if(manual)say(id,ats.length?`Nada novo: os treinos ${doDa(who)} já estavam salvos ✓`:(I.aviso[who]||`Nenhum treino ${doDa(who)} no Garmin desde a semana passada.`));renderRemoto()}
+ }catch(e){if(manual)say(id,ivlErr(e))}
+ I.busy[who]=false;
+}
+/* ao abrir o app (e ao voltar para ele): vê quem tem conta ligada e atualiza a cada 2 horas */
+async function ivlIniciar(){
+ const u=window.fb&&window.fb.user&&window.fb.user();if(!u||u.anonimo)return;
+ const I=state.ivl;
+ if(!I.checado||Date.now()-I.checado>6*3600e3){try{const j=await ivl();I.on={power:!!j.power,pace:!!j.pace};I.checado=Date.now()}catch(e){return}}
+ ["power","pace"].forEach(w=>{if(!(I.bem[w]||[]).length){const c=lsGet("ivl-bem-"+w);if(c&&Array.isArray(c.bem))I.bem[w]=c.bem}});
+ for(const w of quemsEu()){if(!I.on[w])continue;const c=lsGet("ivl-bem-"+w);if(!c||Date.now()-c.t>2*3600e3)await syncGarmin(w,false).catch(()=>{})}
+ renderRemoto();
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.connected)ivlIniciar()});
+/* resumo do relógio para a IA montar a semana seguinte */
+function relogioIA(who){
+ const b=(state.ivl.bem[who]||[]).filter(w=>w.ctl!=null||w.hrv!=null||w.sono!=null);if(!b.length)return "";
+ const u=b[b.length-1],h7=b.filter(w=>w.data>=addDias(u.data,-6)),h28=b.filter(w=>w.data>=addDias(u.data,-27));
+ const m=(l,k)=>{const v=l.map(w=>w[k]).filter(x=>x!=null);return v.length?media(v):null};
+ const a7=b.find(w=>w.data>=addDias(u.data,-7)&&w.ctl!=null),p=[];
+ if(u.ctl!=null)p.push(`condicionamento (CTL) ${Math.round(u.ctl)}${a7?` (há 7 dias ${Math.round(a7.ctl)})`:""}, fadiga (ATL) ${Math.round(u.atl||0)}, forma (CTL−ATL) ${Math.round(u.ctl-(u.atl||0))}`);
+ const hv7=m(h7,"hrv"),hv28=m(h28,"hrv");if(hv7!=null)p.push(`HRV média de 7 dias ${Math.round(hv7)} ms${hv28!=null?` (28 dias: ${Math.round(hv28)})`:""}`);
+ const s7=m(h7,"sono");if(s7!=null)p.push(`sono médio ${(s7/3600).toFixed(1)} h`);
+ const r7=m(h7,"rhr");if(r7!=null)p.push(`FC de repouso ${Math.round(r7)}`);
+ return p.length?`RELÓGIO (Garmin, até ${u.data}): ${p.join("; ")}. Forma abaixo de −30 indica risco de excesso; HRV abaixo da média de 28 dias ou sono curto pedem segurar a intensidade.`:"";
+}
+/* painel "Forma e recuperação" */
+function formaHTML(){
+ const ws=["power","pace"].filter(w=>state.ivl.on[w]);if(!ws.length)return "";
+ const t=(l,v,s,c)=>`<div class="rtile"><span class="rl">${l}</span><b>${v}</b>${s?`<span class="dl ${c||""}">${s}</span>`:""}</div>`;
+ return `<div class="panel wide"><h3>Forma e recuperação</h3><p class="sub">Do relógio, pelo intervals.icu. Condicionamento é a carga acumulada das últimas 6 semanas, fadiga é a dos últimos 7 dias e forma é a diferença entre as duas.</p>
+ ${ws.map(w=>{const b=(state.ivl.bem[w]||[]).filter(x=>x.ctl!=null||x.hrv!=null||x.sono!=null),u=b[b.length-1];
+  if(!u)return `<p class="sub"><b style="color:var(--${w})">${esc(quem(w))}</b>: ${esc(state.ivl.aviso[w]||"ainda sem dados do relógio.")}</p>`;
+  const f=u.ctl!=null?Math.round(u.ctl-(u.atl||0)):null,ft=f==null?"":f<-30?"carga alta demais":f<-10?"treino produtivo":f<=5?"equilibrado":"descansado";
+  const ant=b.find(x=>x.data>=addDias(u.data,-7)&&x.ctl!=null),dc=ant&&u.ctl!=null?Math.round(u.ctl-ant.ctl):null;
+  const hv=b.filter(x=>x.hrv!=null).slice(-7),hm=hv.length?Math.round(media(hv.map(x=>x.hrv))):null;
+  return `<p class="lbl" style="color:var(--${w})">${esc(quem(w))}</p><div class="rtiles">
+   ${u.ctl!=null?t("Condicionamento",Math.round(u.ctl),dc!=null?`${dc>=0?"▲ +":"▼ "}${dc} em 7 dias`:"",dc>0?"up":dc<0?"down":""):""}
+   ${u.atl!=null?t("Fadiga",Math.round(u.atl)):""}
+   ${f!=null?t("Forma",(f>0?"+":"")+f,ft,f<-30?"down":"up"):""}
+   ${u.hrv!=null?t("HRV",Math.round(u.hrv)+" ms",hm?`média de 7 dias: ${hm}`:"",hm&&u.hrv<hm*0.9?"down":""):""}
+   ${u.sono!=null?t("Sono",num((u.sono/3600).toFixed(1))+" h",u.sono<7*3600?"abaixo de 7 h":"",u.sono<7*3600?"down":"up"):""}
+   ${u.rhr!=null?t("FC de repouso",Math.round(u.rhr)):""}</div>`}).join("")}</div>`;
+}
+/* envio da semana ao relógio */
+const descanso=s=>!s||(!(+s.min)&&!(s.blocos||[]).length)||/descanso|folga|repouso|\boff\b/i.test((s.titulo||"")+" "+(s.tipo||""));
+const textoSessao=s=>[s.desc?nm(s.desc):"",...(s.blocos||[]).map(b=>{const md=modoDe(b);
+ return `${nm(b.nome)}${+b.voltas>1?` (${+b.voltas} rounds)`:""}${md&&md!=="series"?" · "+MODOS[md]:""}\n`+(b.itens||[]).map(i=>{const d=doseTxt(i,b),o=i&&typeof i==="object"?i:{};
+  return `• ${d?d+" ":""}${nm(txtI(i))}${o.carga?` (carga: ${nm(o.carga)})`:""}${+o.desc&&!(+b.voltas>1)?` · descanso ${segTxt(+o.desc)}`:""}`}).join("\n")}),s.nota?nm(s.nota):""].filter(Boolean).join("\n\n");
+function garminSemanaHTML(){
+ const alvos=quemsEu().filter(w=>state.ivl.on[w]);if(!alvos.length)return "";
+ const I=state.ivl;
+ return `<div class="panel" style="margin-top:18px"><h3>Relógio</h3><p class="sub">Manda os treinos de hoje até domingo para o calendário do intervals.icu${alvos.length>1?" dos dois":""}. Com o envio ao Garmin ligado lá, eles aparecem no relógio. As corridas vão com os passos e o pace de cada trecho.</p>
+  <div class="actions"><button class="btn sm" data-act="ivl-enviar" ${I.envBusy?"disabled":""}>${I.envBusy?"Enviando…":"Enviar semana ao relógio"}</button><button class="btn sm ghost" data-act="ivl-sync">Buscar treinos feitos</button></div>
+  <div class="upl" id="upl-env"></div><div class="upl" id="upl-res"></div></div>`;
+}
+async function enviarGarmin(){
+ const I=state.ivl,id="upl-env",alvos=quemsEu().filter(w=>I.on[w]);
+ if(I.envBusy||!alvos.length)return;
+ if(state.week.id!==state.currentId){say(id,"Só a semana atual pode ir para o relógio.");return}
+ const ti=todayIdx(),ini=ti>=0?ti:(state.week.id>isoLocal(new Date())?0:7);
+ I.envBusy=true;say(id,"Preparando os treinos…");render();
+ try{
+  const out=[];
+  for(const w of alvos){
+   const lista=[],runs=[];
+   state.week.dias.forEach((day,i)=>{if(i<ini)return;const data=addDias(state.week.id,i);
+    const s=w==="power"?day.power:(day.pace[opt(i)]||day.pace.a);
+    if(!descanso(s))lista.push({data,slot:"t",nome:nm(s.titulo),tipo:w==="power"&&/corrida|rodagem|\brun\b/i.test(s.tipo||"")&&!(s.blocos||[]).length?"Run":"WeightTraining",min:+s.min||0,texto:textoSessao(s)});
+    const r=w==="pace"&&day.pace.corrida;if(r)runs.push({data,nome:r.titulo,min:+r.min||0,km:+r.km||0,passos:r.passos||[]});
+   });
+   if(runs.length){
+    say(id,`Montando as corridas ${doDa(w)} para o relógio…`);
+    const conv={};
+    try{
+     const zonas=ZN.map((z,k)=>`${z}: ${state.cfg.paces[k]||"sem pace definido"}`).join("; ");
+     const r=await geminiJson(`Converta cada corrida abaixo para o texto de treino estruturado do intervals.icu, que vai para o relógio Garmin. Regras do formato:
+- Cada passo é uma linha que começa com "- ": um nome curto opcional, a duração ou a distância e o alvo. Duração: 10m, 45s, 1m30s. Distância: 1km, 2.5km, 400mtr (metros usam "mtr").
+- Alvo de pace: faixa absoluta por km, do mais rápido ao mais lento, terminando com " Pace". Exemplo: "- Aquecimento 10m 6:15-6:28/km Pace".
+- Paces por zona desta atleta (min/km): ${zonas}. Use a faixa da zona pedida em cada trecho; sem zona indicada, use Z2.
+- Repetições: uma linha só com "5x" e, logo abaixo, os passos que se repetem (tiro e recuperação). Deixe uma linha em branco antes e depois de cada repetição.
+- Separe aquecimento, parte principal e desaquecimento com linhas em branco. Não escreva nenhuma outra linha além dos passos e das linhas "Nx".
+- Siga a planilha à risca: não invente trechos, volumes ou paces.
+Responda APENAS JSON: {"corridas":[{"data":"AAAA-MM-DD","texto":"..."}]}
+Corridas: ${JSON.stringify(runs.map(x=>({data:x.data,titulo:x.nome,km:x.km,min:x.min,passos:x.passos})))}`,null,null,"LOW");
+     ((r&&r.corridas)||[]).forEach(c=>{if(c&&typeof c.texto==="string"&&/^\s*-\s/m.test(c.texto))conv[c.data]=c.texto.trim()});
+    }catch(e){}
+    runs.forEach(x=>lista.push({data:x.data,slot:"c",nome:x.nome,tipo:"Run",min:x.min,texto:conv[x.data]||x.passos.join("\n")}));
+   }
+   if(!lista.length)continue;
+   const j=await ivl({acao:"enviar",who:w,treinos:lista});
+   out.push(`${quem(w)}: ${j.enviados} treino${j.enviados!==1?"s":""}`);
+  }
+  I.env={t:Date.now()};
+  say(id,out.length?`Enviado ✓ ${out.join("; ")}. Com a sincronização ao Garmin ligada no intervals.icu, os treinos aparecem no relógio em alguns minutos.`:"Nenhum treino para enviar de hoje até domingo.");
+ }catch(e){say(id,ivlErr(e))}
+ I.envBusy=false;render();
 }
 
 /* Nova dieta da Joanna */
@@ -2694,6 +2842,8 @@ view.addEventListener("click",e=>{
  }
  if(act==="apr-del"){const w=t.dataset.who,l=(state.memoria||{})[w];if(!l)return;l.splice(+t.dataset.i,1);mergeNow("aprendizados/v2",{[w]:l},state.memoria);render();return}
  if(act==="hist-reload"){state.hist=null;render();return}
+ if(act==="ivl-sync"){(async()=>{for(const w of quemsEu().filter(x=>state.ivl.on[x]))await syncGarmin(w,true)})();return}
+ if(act==="ivl-enviar"){enviarGarmin();return}
  if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace",true);
  if(act==="imp-dieta")return pick("dieta",".pdf,.docx,.txt,image/*");
  if(act==="imp-lib")return pick("lib",".txt,.md,.pdf,.docx,.csv,image/*");
@@ -2854,6 +3004,8 @@ async function initCloud(){
  window.fb.watch("aprendizados/v2",(m)=>{state.memoria={power:(m&&m.power)||[],pace:(m&&m.pace)||[]};lsSet("aprendizados/v2",state.memoria);if(state.tab==="nova")renderRemoto()});
  bindWeekWatchers();
  render();
+ /* Garmin pelo intervals.icu: puxa os treinos feitos e o bem-estar sem precisar importar print */
+ ivlIniciar();
 }
 
 (function init(){
