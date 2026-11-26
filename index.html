@@ -543,6 +543,12 @@ body.sheet-aberto{overflow:hidden}
  .dayname{font-size:clamp(3rem,15vw,4.2rem)}
 }
 
+/* lembretes na tela Conta e aviso rápido no rodapé */
+.lembretes{border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px}
+.lembretes h4{margin:0 0 4px;font-size:1rem}
+.aviso{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);z-index:70;background:var(--ink);color:var(--on-ink);border-radius:999px;padding:10px 18px;font-size:.9rem;font-weight:650;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px);text-align:center}
+.aviso.on{opacity:1;transform:translate(-50%,0)}
+
 /* ===== Modo treino: tela cheia, um bloco por vez, com cronômetro ===== */
 .comecar{width:100%;margin-top:16px;padding:13px 20px;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px}
 .comecar::before{content:"";width:0;height:0;border-left:10px solid currentColor;border-top:6px solid transparent;border-bottom:6px solid transparent}
@@ -1117,6 +1123,8 @@ function savePlanSlots(slots){
  const paths=["semanas/v2-"+state.week.id];
  if(atual){state.currentId=state.week.id;lsSet(P_PLAN,state.week);paths.push(P_PLAN)}
  Promise.all(paths.map(p=>window.fb.patchPlan(p,muda,state.week))).then(syncOk).catch(fbFail);
+ /* o relógio acompanha o ajuste */
+ reenviarAjuste(slots);
 }
 
 /* status da sincronização */
@@ -1172,6 +1180,8 @@ function aplicarEu(){
  if(v==="power"||v==="pace"){state.dietWho=v;if(state.rh)state.rh.who=v}
 }
 function setEu(v){state.eu=v;lsSet("eu",v);aplicarEu();
+ /* lembretes deste celular passam a ser da pessoa escolhida */
+ {const id=lsGet("push-id");if(id&&window.fb&&window.fb.merge)window.fb.merge("push/"+id,{who:v}).catch(()=>{})}
  /* logo depois de escolher, pede o login Google se ainda não entrou */
  const u=window.fb&&window.fb.user&&window.fb.user();state.sheet=u&&u.anonimo?"conta":null;render();scrollTo(0,0)}
 /* pessoa padrão para importar resultados: quem usa o celular (a conferência deixa trocar) */
@@ -1197,6 +1207,7 @@ function renderSheet(){
   el.innerHTML=`<div class="sheet-fundo" data-fechar-sheet></div><div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-alca" aria-hidden="true"></div>
    <h3>Conta</h3>
    ${google?`<p class="sub">Conectado como <b>${esc(u.email||u.nome)}</b>. Os dados ficam protegidos e só as contas liberadas nas regras do Firebase acessam.</p>
+     ${lembretesHTML()}
      <button class="btn ghost sheet-fechar" data-sair>Sair desta conta</button>`
     :`<p class="sub">Entre com a sua conta Google. Assim só vocês dois conseguem ver e alterar os treinos, a dieta e os resultados.</p>
      <button class="btn sheet-fechar" data-login>${conhecida?`Continuar como ${esc(conhecida)}`:"Entrar com Google"}</button>`}
@@ -1216,6 +1227,7 @@ document.addEventListener("click",e=>{
  /* entrar com Google / sair: recarrega o app para reconectar tudo com a conta nova */
  if(t.closest("[data-login]")){state.loginErr="";if(!window.fb||!window.fb.entrarGoogle){state.loginErr="Sem conexão com a nuvem agora. Tente de novo em instantes.";renderSheet();return}
   window.fb.entrarGoogle().then(r=>{if(r!=="redirect")location.reload()}).catch(err=>{const c=(err&&err.code)||"";state.loginErr=/popup-closed/.test(c)?"Login cancelado.":/unauthorized-domain/.test(c)?"Este endereço do app ainda não está autorizado no Firebase (Authentication > Settings > Authorized domains).":/operation-not-allowed/.test(c)?"O login com Google ainda não foi ativado no Firebase (Authentication > Sign-in method).":"Não foi possível entrar agora"+(c?` (${c})`:"")+".";renderSheet()});return}
+ {const pu=t.closest("[data-push]");if(pu){if(pu.dataset.push==="on")ligarLembretes();else desligarLembretes();return}}
  if(t.closest("[data-sair]")){window.fb.sair().then(()=>location.reload());return}
  const nav=t.closest("#botnav [data-tab], #sheet [data-tab]");
  if(nav){state.tab=nav.dataset.tab;state.sheet=null;state.delConfirm=null;state.editing=null;render();scrollTo(0,0)}
@@ -2805,6 +2817,71 @@ function garminSemanaHTML(){
   <div class="actions"><button class="btn sm" data-act="ivl-enviar" ${I.envBusy?"disabled":""}>${I.envBusy?"Enviando…":"Enviar semana ao relógio"}</button><button class="btn sm ghost" data-act="ivl-sync">Buscar treinos feitos</button></div>
   <div class="upl" id="upl-env"></div><div class="upl" id="upl-res"></div></div>`;
 }
+const sessaoRelogio=(w,i)=>{const day=state.week.dias[i];return w==="power"?day.power:(day.pace[opt(i)]||day.pace.a)};
+const itemRelogio=(w,s,data)=>({data,slot:"t",nome:nm(s.titulo),tipo:w==="power"&&/corrida|rodagem|\brun\b/i.test(s.tipo||"")&&!(s.blocos||[]).length?"Run":"WeightTraining",min:+s.min||0,texto:textoSessao(s)});
+/* treino ajustado no app (editar, refazer com IA, biblioteca, troca de opção): manda de novo só aquele dia,
+   para o relógio ficar igual ao app. Só dias de hoje em diante da semana atual, e só para quem tem o Garmin ligado. */
+function reenviarAjuste(slots){
+ if(!state.currentId||state.week.id!==state.currentId)return;
+ const ti=todayIdx(),hoje=isoLocal(new Date());
+ const feitos=new Set();
+ slots.forEach(([d,slot])=>{
+  d=+d;const who=slot==="power"?"power":(slot==="a"||slot==="b")?"pace":null;
+  if(!who||!state.ivl.on[who]||(who==="pace"&&slot!==opt(d)))return;
+  if(ti>=0?d<ti:state.week.id<=hoje)return;
+  const k=who+d;if(feitos.has(k))return;feitos.add(k);
+  const data=addDias(state.week.id,d),s=sessaoRelogio(who,d);
+  ivl({acao:"enviar",who,treinos:descanso(s)?[]:[itemRelogio(who,s,data)],de:data,ate:data})
+   .then(()=>aviso(`Relógio atualizado ✓ ${DIAS[d]} ${doDa(who)}`)).catch(e=>aviso(ivlErr(e)));
+ });
+}
+/* ===== Lembretes (notificações) neste celular =====
+   O servidor (api/lembretes.js) manda de manhã o treino do dia e à noite o que falta registrar.
+   No iPhone só funciona com o app aberto pelo ícone da tela inicial. */
+const pushSuporta=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+const ehIphone=()=>/iPhone|iPad|iPod/.test(navigator.userAgent);
+const naTelaInicial=()=>window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
+const pushLigado=()=>{try{return pushSuporta()&&Notification.permission==="granted"&&!!lsGet("push-id")}catch(e){return false}};
+function b64u8(s){const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function idDoAparelho(endpoint){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(endpoint));return [...new Uint8Array(h)].slice(0,16).map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function ligarLembretes(){
+ state.pushMsg="Ligando…";renderSheet();
+ try{
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted")throw {msg:"As notificações não foram permitidas. No iPhone: Ajustes > Notificações > Pace & Power > Permitir Notificações."};
+  const reg=await navigator.serviceWorker.ready;
+  const j=await fetch("/api/lembretes?chave=1").then(r=>r.json()).catch(()=>({}));
+  if(!j.chave)throw {msg:"Ainda faltam as chaves dos lembretes na Vercel."};
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u8(j.chave)});
+  const s=sub.toJSON(),id=await idDoAparelho(s.endpoint);
+  await window.fb.set("push/"+id,{sub:{endpoint:s.endpoint,keys:s.keys},who:state.eu||"ambos",ativo:true,criado:Date.now()});
+  lsSet("push-id",id);
+  /* notificação de teste agora, para confirmar que chegou */
+  const tk=await window.fb.token();
+  const r=await fetch("/api/lembretes",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+tk},body:JSON.stringify({sub:s})});
+  const jr=await r.json().catch(()=>({}));
+  state.pushMsg=r.ok?"Lembretes ligados ✓ Deve chegar uma notificação de teste agora.":`Inscrito, mas o teste falhou: ${jr.error||"erro "+r.status}.`;
+ }catch(e){state.pushMsg=(e&&e.msg)||`Não foi possível ligar os lembretes${e&&e.message?` (${e.message})`:""}.`}
+ renderSheet();
+}
+async function desligarLembretes(){
+ try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe()}catch(e){}
+ const id=lsGet("push-id");if(id&&window.fb)window.fb.set("push/"+id,{ativo:false}).catch(()=>{});
+ try{localStorage.removeItem(LS+"push-id")}catch(e){}
+ state.pushMsg="Lembretes desligados neste celular.";renderSheet();
+}
+function lembretesHTML(){
+ const ligado=pushLigado();
+ const corpo=!pushSuporta()?`<p class="sub">${ehIphone()&&!naTelaInicial()?"Para receber lembretes no iPhone, abra o app pelo ícone da tela inicial e ligue por aqui.":"Este navegador não aceita notificações."}</p>`
+  :ligado?`<button class="btn ghost sheet-fechar" data-push="off">Desligar lembretes</button>`:`<button class="btn sheet-fechar" data-push="on">Ligar lembretes</button>`;
+ return `<div class="lembretes"><h4>Lembretes neste celular</h4><p class="sub">Por volta das 6h, o treino do dia. Por volta das 20h, o que ainda falta registrar (treino feito, dieta).${ligado?` Para: <b>${esc(state.eu==="power"?NP():state.eu==="pace"?NA():"os dois")}</b>.`:""}</p>${corpo}${state.pushMsg?`<p class="sub" style="margin-top:8px">${esc(state.pushMsg)}</p>`:""}</div>`;
+}
+/* aviso rápido no rodapé da tela */
+function aviso(t){
+ let el=document.getElementById("aviso");if(!el){el=document.createElement("div");el.id="aviso";el.className="aviso";el.setAttribute("role","status");document.body.appendChild(el)}
+ el.textContent=t;el.classList.add("on");clearTimeout(aviso.t);aviso.t=setTimeout(()=>el.classList.remove("on"),3500);
+}
 async function enviarGarmin(){
  const I=state.ivl,id="upl-env",alvos=quemsEu().filter(w=>I.on[w]);
  if(I.envBusy||!alvos.length)return;
@@ -2817,8 +2894,7 @@ async function enviarGarmin(){
    /* só os treinos do Pace & Power (força e complemento). As corridas da planilha da Joanna já chegam ao relógio pelo app da assessoria. */
    const lista=[];
    state.week.dias.forEach((day,i)=>{if(i<ini)return;const data=addDias(state.week.id,i);
-    const s=w==="power"?day.power:(day.pace[opt(i)]||day.pace.a);
-    if(!descanso(s))lista.push({data,slot:"t",nome:nm(s.titulo),tipo:w==="power"&&/corrida|rodagem|\brun\b/i.test(s.tipo||"")&&!(s.blocos||[]).length?"Run":"WeightTraining",min:+s.min||0,texto:textoSessao(s)});
+    const s=sessaoRelogio(w,i);if(!descanso(s))lista.push(itemRelogio(w,s,data));
    });
    if(!lista.length)continue;
    /* de/ate: o servidor troca tudo o que o app já tinha mandado nesses dias (inclusive corridas de envios antigos) */
@@ -2947,7 +3023,7 @@ view.addEventListener("click",e=>{
  if(t.dataset.act==="res-reload"){state.rh.loaded=false;render();return}
  if(t.dataset.act==="ia-analise"){iaAnalise(t.dataset.who);return}
  if(t.dataset.tabGo){state.tab=t.dataset.tabGo;render();scrollTo(0,0);return}
- if(t.dataset.opt){state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();return}
+ if(t.dataset.opt){const mudou=opt(+t.dataset.d)!==t.dataset.opt;state.log.opt[t.dataset.d]=t.dataset.opt;state.editing=null;saveLog({opt:{[t.dataset.d]:t.dataset.opt}});render();if(mudou)reenviarAjuste([[+t.dataset.d,t.dataset.opt]]);return}
  if(t.dataset.genWho!==undefined){const a=document.getElementById("ajustes");if(a)state.ajustesTxt=a.value;state.genWho=t.dataset.genWho;render();return}
  const act=t.dataset.act;
  if(act==="redo-card"){if(state.redo&&state.redo.ctl)state.redo.ctl.abort();state.editing=null;state.redo={d:+t.dataset.d,slot:t.dataset.slot,pedido:"",draft:null,loading:false,err:""};render();return}

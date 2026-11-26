@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/lembretes?tipo=manha", "schedule": "0 9 * * *" },
+    { "path": "/api/lembretes?tipo=noite", "schedule": "0 23 * * *" }
+  ]
+}

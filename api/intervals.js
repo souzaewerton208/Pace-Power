@@ -80,8 +80,9 @@ module.exports = async (req, res) => {
 
     if (b.acao === "enviar") {
       const lista = (Array.isArray(b.treinos) ? b.treinos : []).filter((t) => t && DATA.test(t.data || "")).slice(0, 30);
-      if (!lista.length) return res.status(400).json({ error: "Nenhum treino para enviar" });
-      const datas = lista.map((t) => t.data).sort();
+      // lista vazia com "de" e "ate": o dia virou descanso, só tira o que o app tinha mandado
+      if (!lista.length && !(DATA.test(b.de || "") && DATA.test(b.ate || ""))) return res.status(400).json({ error: "Nenhum treino para enviar" });
+      const datas = lista.length ? lista.map((t) => t.data).sort() : [b.de, b.ate];
       // tira o que o app já tinha mandado nesses dias (assim reenviar não duplica);
       // "de" e "ate" cobrem a semana toda, inclusive dias que ficaram sem treino no envio novo
       const de = DATA.test(b.de || "") && b.de < datas[0] ? b.de : datas[0];
@@ -101,7 +102,7 @@ module.exports = async (req, res) => {
         moving_time: Math.max(0, Math.round(+t.min || 0) * 60) || undefined,
         external_id: `pp-${t.data}-${String(t.slot || i).replace(/[^a-z0-9]/gi, "")}`
       }));
-      const criados = await api(c, "POST", "/events/bulk?upsert=false&updatePlanApplied=false", eventos);
+      const criados = eventos.length ? await api(c, "POST", "/events/bulk?upsert=false&updatePlanApplied=false", eventos) : [];
       return res.json({ enviados: Array.isArray(criados) ? criados.length : eventos.length, trocados: velhos.length });
     }
     return res.status(400).json({ error: "Ação desconhecida" });
