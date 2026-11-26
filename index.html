@@ -498,6 +498,79 @@ body.sheet-aberto{overflow:hidden}
  .adh input{width:24px;height:24px}
  .adh th:first-child,.adh td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
 }
+
+/* ===== Visual mais limpo (mesmas cores, fonte e logo) =====
+   Cartões sem borda com sombra leve, nada de caixa dentro de caixa, pílulas num estilo só. */
+:root{--bg:#F2F4F8;--shadow:0 1px 2px rgba(22,32,74,.05),0 8px 24px -14px rgba(22,32,74,.22);--tint:color-mix(in srgb,var(--ink) 6%,transparent)}
+.bar{border-bottom-color:var(--line-2)}
+.card,.panel,.meal,.diet-log,.keybox,table.week,.adh table,.strip button,details.bloco,.empty{border-color:transparent;box-shadow:var(--shadow)}
+.diet-meta,.pront{border-top-color:transparent;border-right-color:transparent;border-bottom-color:transparent;box-shadow:var(--shadow)}
+.aval{border-right-color:transparent;border-bottom-color:transparent;border-left-color:transparent;box-shadow:var(--shadow)}
+.rsec .aval{box-shadow:none}
+.strip button[aria-pressed="true"]{box-shadow:0 8px 18px -10px rgba(22,32,74,.6)}
+.ci{padding:18px 18px 20px}
+/* área de registros do cartão: mesmo fundo do cartão, separada por uma linha fina */
+.checks{background:var(--surface);border-top:1px solid var(--line-2)}
+.checks .t{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:.7rem}
+.chk label{border-color:var(--line-2)}
+.checks details.refeicoes{background:var(--surface-2);border-color:transparent;box-shadow:none}
+/* blocos internos: só o fundo suave, sem contorno */
+.rtile,.am,.dw-card,.rot-item,.carga,.ind span,.agua,.memoria li,.evolucao,.coach,.redo-box,.real{border-color:transparent}
+.coach,.redo-box{background:var(--surface-2)}
+.coach.pace,.redo-box.pace{box-shadow:inset 3px 0 0 var(--pace)} .coach.power,.redo-box.power{box-shadow:inset 3px 0 0 var(--power)}
+.como{border-left:0;background:var(--surface-2);padding:6px 10px}
+/* pílulas: um estilo só, com fundo suave e sem contorno */
+.tag,.macro-pill,.opt-tag,.kpi,.src,.who-tag,.pbadge{border-color:transparent;font-weight:700;font-size:.74rem;padding:2px 9px;border-radius:999px}
+.src{background:var(--pace-soft)} .pbadge{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.tag,.macro-pill,.opt-tag{background:var(--tint)}
+/* controles segmentados e botões secundários sem contorno */
+.seg,.who-seg,.diet-tabs{border-color:transparent;background:var(--tint)}
+.seg button[aria-pressed="true"]{box-shadow:0 1px 3px rgba(22,32,74,.15)}
+.menu>summary,.edit-btn{border-color:transparent;background:var(--tint)}
+.btn.ghost{border-color:var(--line)}
+.botnav{border-top-color:var(--line-2)!important}
+.panel h3{font-size:1.35rem}
+@media (max-width:640px){
+ /* topo do celular: só o logo, o pontinho da nuvem e quem está usando; a semana aparece na aba Semana */
+ body:not([data-tab="semana"]) .bar-in .wk{display:none}
+ .bar-in .sync:not(.err){padding:6px;border-color:transparent;background:transparent}
+ .bar-in .sync:not(.err) span{display:none}
+ .bar-in .eu-chip{order:3;margin-left:2px}
+ .colhead .goal{display:none}
+ .card h3{font-size:1.6rem}
+ .ci{padding:16px 16px 18px}
+ .checks{padding:12px 16px 16px}
+ .dayname{font-size:clamp(3rem,15vw,4.2rem)}
+}
+
+/* ===== Modo treino: tela cheia, um bloco por vez, com cronômetro ===== */
+.comecar{width:100%;margin-top:16px;padding:13px 20px;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px}
+.comecar::before{content:"";width:0;height:0;border-left:10px solid currentColor;border-top:6px solid transparent;border-bottom:6px solid transparent}
+.tr{position:fixed;inset:0;z-index:60;background:var(--ink);color:var(--on-ink);display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 18px calc(14px + env(safe-area-inset-bottom,0px))}
+.tr-top{display:flex;align-items:center;gap:12px;max-width:640px;width:100%;margin:0 auto}
+.tr-top>div{flex:1;min-width:0;font-stretch:72%;font-weight:800;font-size:1.15rem;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-x{width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:inherit;font-size:1rem;cursor:pointer}
+.tr-pos{font-size:.85rem;opacity:.7;font-variant-numeric:tabular-nums}
+.tr-corpo{flex:1;overflow:auto;max-width:640px;width:100%;margin:14px auto 0}
+.tr-bl{font-stretch:68%;font-weight:900;font-style:italic;font-size:2rem;line-height:1;margin:6px 0 10px;color:#FF9DBE}
+.tr-round{display:flex;align-items:center;gap:14px;margin:0 0 12px}
+.tr-round span{font-size:1rem} .tr-round b{font-size:1.4rem;font-variant-numeric:tabular-nums}
+.tr-round button{width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:inherit;font-size:1.3rem;font-weight:700;cursor:pointer}
+.tr-itens{margin:0;padding-left:22px;display:grid;gap:10px;font-size:1.05rem}
+.tr-itens .dose{background:#fff;color:var(--ink)}
+.tr-como{font-size:.88rem;opacity:.75;margin:14px 0 0}
+.tr-relogio{max-width:640px;width:100%;margin:10px auto 0;text-align:center}
+.tr-clock{font-stretch:62%;font-weight:900;font-size:clamp(4.5rem,24vw,7.5rem);line-height:.95;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tr-clock.conta{color:#7EE2A8}
+.tr-modo{margin:2px 0 10px;font-size:.92rem;opacity:.75}
+.tr-acoes{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.tr-acoes button{border:0;border-radius:999px;padding:10px 16px;font-weight:750;font-size:.92rem;background:rgba(255,255,255,.14);color:inherit;cursor:pointer;min-height:44px}
+.tr-acoes button.on{background:#fff;color:var(--ink)}
+.tr-nav{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;max-width:640px;width:100%;margin:14px auto 0}
+.tr-nav .btn{min-height:50px;font-size:1rem}
+.tr-nav .btn.ghost{color:inherit;border-color:rgba(255,255,255,.3)}
+.tr-nav .btn:not(.ghost){background:#fff;color:var(--ink)}
+.tr-nav .btn.tr-fim{background:#7EE2A8}
 </style>
 </head>
 <body>
@@ -537,6 +610,8 @@ body.sheet-aberto{overflow:hidden}
 </nav>
 <!-- Painel que sobe de baixo (menu "Mais" e "Quem está usando") -->
 <div id="sheet"></div>
+<!-- Modo treino (tela cheia) -->
+<div id="treino"></div>
 
 <!-- Conexão com o Firebase (Projeto: power-e-pace) -->
 <script type="module">
@@ -1162,6 +1237,7 @@ function render(){
  if(state.cfg.prova){const days=Math.ceil((new Date(state.cfg.prova+"T08:00:00")-new Date())/864e5);
   r.innerHTML=days>0?`<span class="n">${Math.ceil(days/7)}</span>semanas para o Hyrox Fortaleza`:`<span class="n">0</span>Hyrox Fortaleza`;}
  else r.innerHTML=`<span class="n">2027</span>Hyrox Fortaleza`;
+ document.body.dataset.tab=state.tab;
  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===state.tab));
  /* barra de baixo (celular): "Mais" fica marcado quando a aba aberta está dentro dele */
  const emMais=["resultados","biblioteca","nova"].includes(state.tab);
@@ -1423,13 +1499,95 @@ function refeicoesDia(who,d,meals){
  return `<details class="refeicoes${tudo?" ok":""}" ${keep(`ref-${who}-${d}`)}><summary><span>Refeições do plano</span><b>${feitas} de ${meals.length}${tudo?" ✓":""}</b></summary>
   <div class="chk">${meals.map(m=>ck(`${d}:${who}:${m.k}`,`${m.h} ${m.n}`)).join("")}</div></details>`;
 }
+/* ===== Modo treino: um bloco por vez em tela cheia, com rounds, descanso, EMOM e AMRAP cronometrados ===== */
+const T={s:null,tick:null,wake:null,ac:null};
+function comecarBtn(who,d,s){
+ if(!s||!(s.blocos||[]).length||descanso(s)||isC(`${d}:${who}:treino`))return "";
+ return `<button class="btn comecar" data-act="treino-ini" data-who="${who}" data-d="${d}">Começar treino</button>`;
+}
+function bip(f,ms){
+ try{const a=T.ac;if(!a)return;const o=a.createOscillator(),g=a.createGain();o.frequency.value=f||880;o.connect(g);g.connect(a.destination);
+  g.gain.setValueAtTime(.25,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+(ms||150)/1000);o.start();o.stop(a.currentTime+(ms||150)/1000)}catch(e){}
+ try{navigator.vibrate&&navigator.vibrate(ms>250?300:80)}catch(e){}
+}
+const mmss=s=>{s=Math.max(0,Math.round(s));return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`};
+/* minutos de EMOM e AMRAP: rounds do bloco ou o número escrito no nome ("AMRAP 12'", "EMOM 10 min") */
+const minBloco=b=>+(((b.nome||"")+" "+(b.como||"")).match(/(\d{1,2})\s*(?:min|'|’|minutos)/i)||[])[1]||+((b.nome||"").match(/(?:emom|amrap)\s*(\d{1,2})/i)||[])[1]||0;
+function abrirTreino(who,d){
+ const day=state.week.dias[d],s=who==="power"?day.power:(day.pace[opt(d)]||day.pace.a);if(!s)return;
+ try{T.ac=T.ac||new (window.AudioContext||window.webkitAudioContext)();T.ac.resume&&T.ac.resume()}catch(e){}
+ T.s={who,d,s,bi:0,round:1,ini:Date.now(),cron:null};
+ document.body.classList.add("sheet-aberto");
+ try{navigator.wakeLock&&navigator.wakeLock.request("screen").then(w=>{T.wake=w}).catch(()=>{})}catch(e){}
+ clearInterval(T.tick);T.tick=setInterval(tickTreino,250);renderTreino();
+}
+function fecharTreino(feito){
+ const x=T.s;clearInterval(T.tick);T.tick=null;T.s=null;
+ try{T.wake&&T.wake.release()}catch(e){}T.wake=null;
+ document.body.classList.remove("sheet-aberto");document.getElementById("treino").innerHTML="";
+ if(feito&&x){const k=`${x.d}:${x.who}:treino`;if(!isC(k))setC(k,true);state.dia=x.d;state.tab="dia";render()}
+}
+function relogioTxt(){const x=T.s;if(!x)return "";const c=x.cron;return c?mmss((c.fim-Date.now())/1000):mmss((Date.now()-x.ini)/1000)}
+function modoTxt(){const c=T.s&&T.s.cron;if(!c)return "Tempo de treino";
+ return c.tipo==="emom"?`EMOM: minuto ${c.k} de ${c.n}`:c.tipo==="amrap"?"AMRAP: o máximo de voltas até zerar":"Descanso";}
+function renderTreino(){
+ const el=document.getElementById("treino"),x=T.s;if(!x){el.innerHTML="";return}
+ const bl=x.s.blocos||[],n=bl.length,b=bl[x.bi]||{},md=modoDe(b),v=+b.voltas||0,mb=minBloco(b),c=x.cron;
+ /* descanso sugerido: o número do exercício ou o escrito no texto ("descanso de 2'30"", "descanso 90 s"); sem nada, 1 min */
+ const descDe=i=>{if(i&&typeof i==="object"&&+i.desc)return +i.desc;const t=txtI(i),m=t.match(/descanso\s*(?:de\s*)?(\d+)\s*['’]\s*(\d+)?/i);if(m)return +m[1]*60+(+m[2]||0);const s=t.match(/descanso\s*(?:de\s*)?(\d+)\s*s\b/i);return s?+s[1]:0};
+ const desc=(b.itens||[]).map(descDe).find(Boolean)||60;
+ const nEmom=mb||(v>1?v:10);
+ el.innerHTML=`<div class="tr notranslate" translate="no" role="dialog" aria-modal="true" aria-label="Modo treino">
+  <div class="tr-top"><button class="tr-x" data-tr="sair" aria-label="Fechar o modo treino">✕</button><div>${esc(nm(x.s.titulo))}</div><span class="tr-pos">bloco ${x.bi+1} de ${n}</span></div>
+  <div class="tr-corpo">
+   <p class="tr-bl">${esc(nm(b.nome||"Treino"))}</p>
+   ${v>1?`<div class="tr-round"><button data-tr="r-" aria-label="Round anterior">−</button><span>Round <b>${x.round}</b> de ${v}</span><button data-tr="r+" aria-label="Próximo round">+</button></div>`:""}
+   <ol class="tr-itens">${(b.itens||[]).map(i=>{const ds=doseTxt(i,b);return `<li>${ds?`<span class="dose">${esc(ds)}</span>`:""}${esc(nm(txtI(i)))}</li>`}).join("")}</ol>
+   ${comoBloco(b)?`<p class="tr-como">${comoBloco(b)}</p>`:""}
+  </div>
+  <div class="tr-relogio"><div id="tr-clock" class="tr-clock${c?" conta":""}">${relogioTxt()}</div><p id="tr-modo" class="tr-modo">${modoTxt()}</p>
+   <div class="tr-acoes">
+    ${md==="emom"?`<button data-tr="emom" data-n="${nEmom}" class="${c&&c.tipo==="emom"?"on":""}">EMOM ${nEmom} min</button>`:""}
+    ${md==="amrap"?(mb?[mb]:[8,12,15,20]).map(m=>`<button data-tr="amrap" data-n="${m}" class="${c&&c.tipo==="amrap"&&c.n===m?"on":""}">AMRAP ${m} min</button>`).join(""):""}
+    <button data-tr="desc" data-n="${desc}" class="${c&&c.tipo==="desc"?"on":""}">Descanso ${segTxt(desc)}</button>
+    ${c?`<button data-tr="parar">Parar</button>`:""}</div></div>
+  <div class="tr-nav"><button class="btn ghost" data-tr="ant" ${x.bi?"":"disabled"}>Anterior</button>${x.bi<n-1?`<button class="btn" data-tr="prox">Próximo bloco</button>`:`<button class="btn tr-fim" data-tr="fim">Concluir treino</button>`}</div></div>`;
+}
+function tickTreino(){
+ const x=T.s;if(!x)return;const c=x.cron;
+ if(c){const rest=(c.fim-Date.now())/1000,s=Math.ceil(rest);
+  if(s<=3&&s>0&&c.bip!==s){c.bip=s;bip(660,120)}
+  if(rest<=0){
+   if(c.tipo==="emom"&&c.k<c.n){c.k++;c.fim+=60000;c.bip=null;bip(990,300)}
+   else{bip(990,600);x.cron=null;
+    /* fim do descanso num circuito: já passa para o próximo round */
+    const b=(x.s.blocos||[])[x.bi]||{};if(c.tipo==="desc"&&+b.voltas>1&&x.round<+b.voltas)x.round++;
+    renderTreino();return}
+  }}
+ const a=document.getElementById("tr-clock");if(a)a.textContent=relogioTxt();
+ const m=document.getElementById("tr-modo");if(m)m.textContent=modoTxt();
+}
+document.getElementById("treino").addEventListener("click",e=>{
+ const t=e.target.closest("[data-tr]"),x=T.s;if(!t||!x)return;
+ const a=t.dataset.tr,b=(x.s.blocos||[])[x.bi]||{},v=+b.voltas||0,n=+t.dataset.n||0;
+ if(a==="sair")return fecharTreino(false);
+ if(a==="fim")return fecharTreino(true);
+ if(a==="r-")x.round=Math.max(1,x.round-1);
+ if(a==="r+")x.round=Math.min(v||1,x.round+1);
+ if(a==="prox"||a==="ant"){x.bi=Math.max(0,Math.min((x.s.blocos||[]).length-1,x.bi+(a==="prox"?1:-1)));x.round=1;x.cron=null}
+ if(a==="desc")x.cron={tipo:"desc",fim:Date.now()+n*1000};
+ if(a==="emom"){x.cron={tipo:"emom",k:1,n,fim:Date.now()+60000};bip(990,300)}
+ if(a==="amrap"){x.cron={tipo:"amrap",n,fim:Date.now()+n*60000};bip(990,300)}
+ if(a==="parar")x.cron=null;
+ renderTreino();
+});
 function powerCard(s,d){
  const isEd=state.editing&&state.editing.dia===d&&state.editing.slot==="power";
  return `<article class="card">${zstripe(s.zonas)}<div class="ci">
   <div class="kind"><span>${esc(s.tipo)}</span>${menuCard("power",d,true)}</div>
   ${redoBox(d,"power")}${isEd?editFormHTML(s,d,"power",false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${+s.km?`<span><b>${num(s.km)}</b> km</span>`:""}${kpiChip(s,"power",d)}</div>
-  ${blocos(s,false,"power",d)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km,"power",d)}${state.verDia==="power"?`${acts("power",d).length?"":`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="power">Importar resultado do relógio</button></p>`}<div class="upl" id="upl-res"></div>${resDraftHTML()}`:""}`}</div>
+  ${comecarBtn("power",d,s)}${blocos(s,false,"power",d)}${s.nota?`<div class="note">${rich(s.nota,false)}</div>`:""}${realHTML(acts("power",d),+s.km,"power",d)}${state.verDia==="power"?`${acts("power",d).length?"":`<p style="margin:12px 0 0"><button class="link" data-act="imp-res" data-who="power">Importar resultado do relógio</button></p>`}<div class="upl" id="upl-res"></div>${resDraftHTML()}`:""}`}</div>
   <div class="checks"><p class="t">Recuperação e alimentação (${esc(NP())})</p><div class="chk">
    ${ck(d+":power:treino","Treino feito")+ck(d+":power:sono","Dormiu 7h ou mais")}${posTreinoHTML("power",d,s,"treino")}${aguaHTML("power",d)}
    ${refeicoesDia("power",d,DIET_EWERTON.refeicoes)}
@@ -1453,7 +1611,7 @@ function optCard(p,d){
   <div class="kind"><div class="seg" role="group" aria-label="Escolha do treino"><button data-opt="a" data-d="${d}" aria-pressed="${o==="a"}">${esc(p.a.tipo||la)}</button><button data-opt="b" data-d="${d}" aria-pressed="${o==="b"}">${esc(p.b.tipo||lb)}</button></div>${menuCard(o,d,true)}</div>
   ${redoBox(d,o)}${isEd?editFormHTML(s,d,o,false):`<h3>${esc(nm(s.titulo))}</h3>${descP(s)}
   <div class="stats"><span><b>${+s.min||0}</b> min</span><span>esforço <b>${+s.rpe||0}</b>/10</span>${kpiChip(s,"pace",d)}</div>
-  ${blocos(s,true,"pace",d)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0,"pace",d)}`}</div>
+  ${comecarBtn("pace",d,s)}${blocos(s,true,"pace",d)}${s.nota?`<div class="note">${rich(s.nota,true)}</div>`:""}${realHTML(acts("pace",d).filter(a=>!a.run||!run),0,"pace",d)}`}</div>
   <div class="checks"><p class="t">Recuperação e nutrição (${esc(NA())})</p><div class="chk">
    ${ck(d+":pace:treino",run?"Complemento feito":"Treino feito")+ck(d+":pace:sono","Dormiu 7h ou mais")}${posTreinoHTML("pace",d,s,"treino")}${aguaHTML("pace",d)}
    ${refeicoesDia("pace",d,MEALS_JOANNA)}</div></div></article>`;
@@ -2844,6 +3002,7 @@ view.addEventListener("click",e=>{
  if(act==="hist-reload"){state.hist=null;render();return}
  if(act==="ivl-sync"){(async()=>{for(const w of quemsEu().filter(x=>state.ivl.on[x]))await syncGarmin(w,true)})();return}
  if(act==="ivl-enviar"){enviarGarmin();return}
+ if(act==="treino-ini"){abrirTreino(t.dataset.who,+t.dataset.d);return}
  if(act==="imp-res")return pick("res",".csv,.txt,.tsv,.pdf,image/*",t.dataset.who||"pace",true);
  if(act==="imp-dieta")return pick("dieta",".pdf,.docx,.txt,image/*");
  if(act==="imp-lib")return pick("lib",".txt,.md,.pdf,.docx,.csv,image/*");
